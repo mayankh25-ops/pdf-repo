@@ -10,6 +10,9 @@ import { Field, GhostButton, PrimaryButton, Spinner, ErrorNote, inputCls } from 
 import type { MovePayload } from "@/components/wizard/UploadZone";
 import { UploadZone } from "@/components/wizard/UploadZone";
 import { TemplatePicker } from "@/components/wizard/TemplatePicker";
+import type { HomeThemeId } from "@/components/wizard/themes";
+import { HomeBackdrop, ThemePicker, getHomeTheme } from "@/components/wizard/themes";
+import { usePersistent } from "@/components/wizard/usePersistent";
 
 const STEPS = ["Details", "Template", "Photos", "Generate"] as const;
 
@@ -19,8 +22,19 @@ interface GenResult {
   docxUrl: string;
 }
 
+type PhotoLayout = "auto" | "columns" | "rows";
+
 export default function Home() {
   const [state, setState] = useState<WizardState>(initialState);
+  const [themeRaw, setThemeRaw] = usePersistent("cwr-home-theme", "classic");
+  const [layoutRaw, setLayoutRaw] = usePersistent("cwr-photo-layout", "auto");
+
+  const themeDef = getHomeTheme(themeRaw);
+  const theme = themeDef.id;
+  const setTheme = (id: HomeThemeId) => setThemeRaw(id);
+  const photoLayout: PhotoLayout =
+    layoutRaw === "columns" || layoutRaw === "rows" ? layoutRaw : "auto";
+  const setPhotoLayout = (v: PhotoLayout) => setLayoutRaw(v);
   const set = <K extends keyof WizardState>(key: K, value: WizardState[K]) =>
     setState((s) => ({ ...s, [key]: value }));
 
@@ -50,8 +64,14 @@ export default function Home() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
-      <header className="mb-8 flex items-end justify-between gap-4">
+    <div
+      className={`${themeDef.dark ? "dark " : ""}${themeDef.className} relative flex min-h-dvh flex-col text-text ${
+        theme === "classic" ? "bg-bg" : ""
+      }`}
+    >
+      <HomeBackdrop theme={theme} />
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
+      <header className="mb-6 flex items-end justify-between gap-4">
         <div>
           <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-text-muted">
             CLEANING WORKS REPORT GENERATOR
@@ -68,8 +88,12 @@ export default function Home() {
         </Link>
       </header>
 
+      <div className="mb-6">
+        <ThemePicker value={theme} onChange={setTheme} />
+      </div>
+
       {/* Step indicator */}
-      <nav aria-label="Steps" className="mb-8 flex items-center gap-1 border-b border-hairline pb-4">
+      <nav aria-label="Steps" className="mb-8 flex items-center gap-1 overflow-x-auto border-b border-hairline pb-4">
         {STEPS.map((label, i) => {
           const n = (i + 1) as WizardState["step"];
           const active = state.step === n;
@@ -79,7 +103,7 @@ export default function Home() {
               key={label}
               type="button"
               onClick={() => (done || active ? go(n) : undefined)}
-              className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] transition-colors ${
+              className={`flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 py-2 text-[14px] transition-colors ${
                 active
                   ? "bg-accent font-medium text-accent-contrast"
                   : done
@@ -113,7 +137,38 @@ export default function Home() {
             title="Add photo evidence"
             sub="Before and after tell the story; during is optional and simply skipped if empty. Drag photos to reorder, or drag them between sections if one landed in the wrong place."
           />
-          <div className="flex flex-col gap-4">
+          <div className="mb-4 flex w-fit items-center gap-1 rounded-[12px] border border-border bg-bg p-1">
+            {(
+              [
+                ["auto", "Auto"],
+                ["columns", "Columns"],
+                ["rows", "Rows"],
+              ] as [PhotoLayout, string][]
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setPhotoLayout(value)}
+                aria-pressed={photoLayout === value}
+                className={`min-h-10 rounded-[9px] px-4 text-[14px] font-medium transition-colors ${
+                  photoLayout === value
+                    ? "bg-accent text-accent-contrast"
+                    : "text-text-muted hover:bg-bg-hover"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div
+            className={
+              photoLayout === "rows"
+                ? "flex flex-col gap-4"
+                : photoLayout === "columns"
+                  ? "grid grid-cols-1 gap-3 min-[520px]:grid-cols-3"
+                  : "flex flex-col gap-4 lg:grid lg:grid-cols-3"
+            }
+          >
             {PHASES.map((phase) => (
               <UploadZone
                 key={phase}
@@ -121,6 +176,7 @@ export default function Home() {
                 images={state.photos[phase]}
                 onChange={(images) => set("photos", { ...state.photos, [phase]: images })}
                 onMove={movePhoto}
+                narrow={photoLayout !== "rows"}
               />
             ))}
           </div>
@@ -135,7 +191,8 @@ export default function Home() {
       {state.step === 4 && (
         <StepGenerate state={state} set={set} onBack={() => go(3)} canGenerate={canGenerate} />
       )}
-    </main>
+      </main>
+    </div>
   );
 }
 
@@ -162,7 +219,10 @@ function StepFooter({
   nextHint?: string;
 }) {
   return (
-    <div className="mt-8 flex items-center justify-between border-t border-hairline pt-5">
+    <div
+      className="sticky bottom-0 z-20 -mx-4 mt-8 flex items-center justify-between gap-3 border-t border-hairline bg-bg/90 px-4 pt-4 backdrop-blur-md sm:static sm:z-auto sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-5 sm:backdrop-blur-none"
+      style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+    >
       <GhostButton onClick={onBack}>Back</GhostButton>
       <div className="flex items-center gap-3">
         {nextHint && <span className="text-[13px] text-text-muted">{nextHint}</span>}
@@ -272,7 +332,7 @@ function StepDetails({
         sub="These appear on the cover and in the running header and footer of every page."
       />
       <form
-        className="max-w-2xl rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7"
+        className="theme-card max-w-2xl rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7"
         onSubmit={(e) => {
           e.preventDefault();
           if (canNext) onNext();
@@ -454,7 +514,7 @@ function StepGenerate({
       />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7">
+        <div className="theme-card rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[14px] sm:grid-cols-3">
             <div>
               <dt className="text-text-muted">Building</dt>
@@ -523,7 +583,7 @@ function StepGenerate({
         </div>
 
         {/* Results */}
-        <div className="rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-6">
+        <div className="theme-card rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-6">
           {result ? (
             <div className="step-enter flex flex-col gap-3">
               <p className="font-mono text-[11px] font-medium tracking-[0.12em] text-text-muted">

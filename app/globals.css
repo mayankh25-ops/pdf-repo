@@ -86,6 +86,14 @@
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
 }
 
+/* UI accent for the web app shell (home themes). Kept separate from the
+   document --accent so choosing a portal look never restyles the reports. */
+:root,
+.dark {
+  --ui-accent: var(--accent);
+  --ui-accent-contrast: var(--accent-contrast);
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-bg-subtle: var(--bg-subtle);
@@ -97,8 +105,8 @@
   --color-text-tertiary: var(--text-tertiary);
   --color-text-muted: var(--text-muted);
   --color-text: var(--text);
-  --color-accent: var(--accent);
-  --color-accent-contrast: var(--accent-contrast);
+  --color-accent: var(--ui-accent);
+  --color-accent-contrast: var(--ui-accent-contrast);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
@@ -113,6 +121,40 @@ html {
   color: var(--text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   Home themes — five looks for the app shell, picked by the user and stored
+   per device. Colours are drawn from the client's reference covers. They set
+   only the UI accent + a backdrop; report documents are unaffected.
+--------------------------------------------------------------------------- */
+.home-wave {
+  --ui-accent: #4d68f9;
+  --ui-accent-contrast: #ffffff;
+}
+.home-ocean {
+  --ui-accent: #e8722c;
+  --ui-accent-contrast: #ffffff;
+}
+.home-field {
+  --ui-accent: #47663c;
+  --ui-accent-contrast: #ffffff;
+}
+.home-photo {
+  --ui-accent: #ffffff;
+  --ui-accent-contrast: #16150f;
+}
+/* Slight translucency for cards on decorated backdrops */
+.home-wave .theme-card,
+.home-ocean .theme-card,
+.home-photo .theme-card {
+  background: color-mix(in srgb, var(--bg-subtle) 82%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.home-field .theme-card {
+  background: color-mix(in srgb, #ffffff 72%, transparent);
 }
 
 ::selection {

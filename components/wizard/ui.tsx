@@ -22,8 +22,9 @@ export function Field({
   );
 }
 
+// 16px font stops iOS Safari from zooming in on focus; min-h keeps a 44px+ target.
 export const inputCls =
-  "w-full rounded-[10px] border border-border bg-bg px-3.5 py-2.5 text-[15px] text-text placeholder:text-text-tertiary outline-none transition-colors focus:border-border-strong";
+  "w-full min-h-12 rounded-[10px] border border-border bg-bg px-3.5 py-2.5 text-[16px] text-text placeholder:text-text-tertiary outline-none transition-colors focus:border-border-strong";
 
 export function PrimaryButton({
   children,
@@ -43,7 +44,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`${full ? "w-full " : ""}inline-flex items-center justify-center gap-2 rounded-[10px] bg-accent px-5 py-2.5 text-[15px] font-medium text-accent-contrast transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40`}
+      className={`${full ? "w-full " : ""}inline-flex min-h-12 items-center justify-center gap-2 rounded-[12px] bg-accent px-6 py-3 text-[16px] font-medium text-accent-contrast transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-40`}
     >
       {children}
     </button>
@@ -64,7 +65,7 @@ export function GhostButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-border bg-bg px-5 py-2.5 text-[15px] font-medium text-text transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[12px] border border-border bg-bg px-6 py-3 text-[16px] font-medium text-text transition-colors hover:bg-bg-hover active:bg-bg-element disabled:cursor-not-allowed disabled:opacity-40"
     >
       {children}
     </button>

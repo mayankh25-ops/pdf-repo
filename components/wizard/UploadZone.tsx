@@ -32,11 +32,14 @@ export function UploadZone({
   images,
   onChange,
   onMove,
+  narrow = false,
 }: {
   phase: Phase;
   images: UploadedImage[];
   onChange: (images: UploadedImage[]) => void;
   onMove: (payload: MovePayload, toPhase: Phase, toIndex: number | null) => void;
+  /** true when zones sit side-by-side as columns (fewer thumbs per row) */
+  narrow?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -79,7 +82,7 @@ export function UploadZone({
 
   return (
     <section
-      className={`flex flex-col rounded-[16px] border bg-bg-subtle p-4 transition-colors ${
+      className={`theme-card flex flex-col rounded-[16px] border bg-bg-subtle p-4 transition-colors ${
         dragOver ? "border-border-strong" : "border-hairline"
       }`}
       onDragOver={(e) => {
@@ -137,7 +140,11 @@ export function UploadZone({
       <ErrorNote message={error} />
 
       {images.length > 0 && (
-        <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul
+          className={`mt-4 grid gap-4 ${
+            narrow ? "grid-cols-1 2xl:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+          }`}
+        >
           {images.map((img, i) => (
             <li
               key={img.id}
@@ -171,7 +178,7 @@ export function UploadZone({
                   type="button"
                   aria-label={`Remove ${img.name}`}
                   onClick={() => onChange(images.filter((x) => x.id !== img.id))}
-                  className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-bg text-[15px] leading-none text-text shadow-card"
+                  className="absolute right-2 top-2 flex size-9 items-center justify-center rounded-full bg-bg text-[17px] leading-none text-text shadow-card"
                 >
                   ×
                 </button>
@@ -182,7 +189,7 @@ export function UploadZone({
                   onChange={(e) =>
                     onMove({ fromPhase: phase, id: img.id }, e.target.value as Phase, null)
                   }
-                  className="absolute bottom-2 right-2 rounded-[6px] border border-border bg-bg px-1.5 py-1 font-mono text-[10.5px] font-medium tracking-[0.06em] text-text-muted"
+                  className="absolute bottom-2 right-2 min-h-9 rounded-[8px] border border-border bg-bg px-2 py-1.5 font-mono text-[11px] font-medium tracking-[0.06em] text-text-muted"
                 >
                   {PHASES.map((p) => (
                     <option key={p} value={p}>
@@ -201,7 +208,7 @@ export function UploadZone({
                     images.map((x) => (x.id === img.id ? { ...x, caption: e.target.value } : x)),
                   )
                 }
-                className="w-full rounded-[6px] border border-transparent bg-transparent px-1 py-0.5 text-[12.5px] text-text placeholder:text-text-tertiary outline-none focus:border-border"
+                className="w-full rounded-[6px] border border-transparent bg-transparent px-1 py-1 text-[16px] text-text placeholder:text-text-tertiary outline-none focus:border-border sm:text-[13px]"
               />
             </li>
           ))}

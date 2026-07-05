@@ -1,0 +1,190 @@
+@import "tailwindcss";
+@import "@radix-ui/colors/sand.css";
+@import "@radix-ui/colors/sand-dark.css";
+@import "@radix-ui/colors/black-alpha.css";
+@import "@radix-ui/colors/white-alpha.css";
+
+/* ---------------------------------------------------------------------------
+   Fonts — see design/tokens.md §2
+   General Sans (headings) is self-hosted via `npm run fetch-fonts`; until the
+   files exist the display stack falls back to Hanken Grotesk.
+--------------------------------------------------------------------------- */
+@font-face {
+  font-family: "General Sans";
+  src: url("/fonts/GeneralSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url("/fonts/GeneralSans-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url("/fonts/GeneralSans-Semibold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url("/fonts/GeneralSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("/fonts/HankenGrotesk-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/GeistMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/GeistMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------------------
+   Semantic tokens — design/tokens.md §1.2
+   Light resolves from the Radix sand light scale; `.dark` re-resolves the same
+   aliases from the sand dark scale. Components only ever use the aliases.
+--------------------------------------------------------------------------- */
+:root {
+  --bg: var(--sand-1);
+  --bg-subtle: var(--sand-2);
+  --bg-element: var(--sand-3);
+  --bg-hover: var(--sand-4);
+  --hairline: var(--sand-6);
+  --border: var(--sand-7);
+  --border-strong: var(--sand-8);
+  --text-tertiary: var(--sand-9);
+  --text-muted: var(--sand-11);
+  --text: var(--sand-12);
+
+  /* Single swappable accent (design/tokens.md §1.4). No invented palette. */
+  --accent: var(--sand-12);
+  --accent-contrast: var(--sand-1);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-card: 0 1px 2px var(--black-a3), 0 4px 16px var(--black-a2);
+
+  --font-display: "General Sans", "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+}
+
+/* Radix sand-dark.css populates --sand-* under .dark; aliases re-resolve. */
+.dark {
+  --accent: var(--sand-12);
+  --accent-contrast: var(--sand-1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-element: var(--bg-element);
+  --color-bg-hover: var(--bg-hover);
+  --color-hairline: var(--hairline);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-muted: var(--text-muted);
+  --color-text: var(--text);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --shadow-card: var(--shadow-card);
+}
+
+html {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--sand-5);
+}
+
+/* Restrained motion — step transitions only (design/tokens.md §5) */
+.step-enter {
+  animation: step-in 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Document pages (shared by on-screen preview and the /print PDF route)
+   A4 = 210 × 297 mm. Each .doc-page owns its chrome; pagination is explicit.
+--------------------------------------------------------------------------- */
+.doc-page {
+  width: 210mm;
+  height: 297mm;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-hairline {
+  border-color: var(--hairline);
+}
+
+.doc-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
+.doc-display {
+  font-family: var(--font-display);
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff; /* printer paper base, not a palette colour */
+  }
+  .doc-page {
+    break-after: page;
+    page-break-after: always;
+  }
+  .doc-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

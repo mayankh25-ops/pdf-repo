@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="88" viewBox="0 0 320 88">
+  <circle cx="44" cy="44" r="26" fill="none" stroke="#21201c" stroke-width="5"/>
+  <path d="M31 44 l9 9 l18 -19" fill="none" stroke="#21201c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="88" y="52" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="1" fill="#21201c">ACME FM</text>
+  <text x="88" y="72" font-family="Arial, Helvetica, sans-serif" font-size="13" letter-spacing="3" fill="#63635e">FACILITY SERVICES</text>
+</svg>

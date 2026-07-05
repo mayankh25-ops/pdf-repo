@@ -57,7 +57,10 @@
    Light resolves from the Radix sand light scale; `.dark` re-resolves the same
    aliases from the sand dark scale. Components only ever use the aliases.
 --------------------------------------------------------------------------- */
-:root {
+/* Aliases are (re)declared on .dark as well so they re-resolve against the
+   sand dark scale that Radix scopes to `.dark, .dark-theme`. */
+:root,
+.dark {
   --bg: var(--sand-1);
   --bg-subtle: var(--sand-2);
   --bg-element: var(--sand-3);
@@ -81,12 +84,6 @@
   --font-display: "General Sans", "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
-}
-
-/* Radix sand-dark.css populates --sand-* under .dark; aliases re-resolve. */
-.dark {
-  --accent: var(--sand-12);
-  --accent-contrast: var(--sand-1);
 }
 
 @theme inline {

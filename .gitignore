@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# fonts are synced from node_modules (postinstall) / fetched from Fontshare
+/public/fonts

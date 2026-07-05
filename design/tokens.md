@@ -119,7 +119,25 @@ Web UI uses Tailwind's default scale with the same families.
 - Photo grid: 2 images per portrait page, `--photo-gap: 6mm`. Tag chips inset
   `4mm` from the image corner.
 
-## 5. Motion (web UI)
+## 5. Cover family motifs
+
+Recurring elements that make the five covers read as one family (informed by
+the client's reference deck, re-expressed in tokens):
+
+- **Accent dash** — a short `9 × 1.2 mm` bar in `--accent` above the title
+  (on photo scrims it renders in `--white-a12`).
+- **Mono kicker** — `CLEANING WORKS REPORT` / date line in `--font-mono`,
+  `+10%` tracking, `--text-muted`.
+- **Meta columns** — a hairline-topped bar of labelled columns (`BUILDING` /
+  `DATE OF WORKS` / `PREPARED BY`): 6.5pt mono labels in `--text-muted` over
+  9–9.5pt semibold values. Dates always in `--font-mono`.
+- **Ghost poster type** — oversized display initials in `--bg-element` behind
+  the Minimal Light cover; section dividers use the same idea with the
+  section number in `--text-tertiary`.
+- **Logo chip** — a `--bg` rounded panel with hairline border where the logo
+  overlaps photography (Image Hero — Light panel).
+
+## 6. Motion (web UI)
 
 Restrained: step transitions (`180ms cubic-bezier(0.2, 0, 0, 1)` fade/slide)
 and template-picker selection ring (`120ms ease-out`). Nothing else animates.

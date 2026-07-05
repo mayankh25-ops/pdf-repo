@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node scripts/sync-fonts.mjs",
+    "fetch-fonts": "node scripts/fetch-fonts.mjs",
+    "make-samples": "node scripts/make-samples.mjs"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "^5.2.8",

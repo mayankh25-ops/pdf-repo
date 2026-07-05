@@ -3,19 +3,22 @@
 FROM mcr.microsoft.com/playwright:v1.61.1-noble
 
 WORKDIR /app
-ENV NODE_ENV=production \
-    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
+# NOTE: NODE_ENV must NOT be "production" here — next build needs the
+# devDependencies (tailwind/postcss/typescript). --include=dev makes that
+# explicit regardless of platform-injected env.
 COPY package.json package-lock.json ./
 COPY scripts ./scripts
-RUN npm ci --ignore-scripts && node scripts/sync-fonts.mjs
+RUN npm ci --ignore-scripts --include=dev && node scripts/sync-fonts.mjs
 
 COPY . .
 # General Sans (headings) from Fontshare; non-fatal if the CDN is unreachable —
 # headings fall back to Hanken Grotesk.
 RUN node scripts/fetch-fonts.mjs || true
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
+ENV NODE_ENV=production
 EXPOSE 3000
 # Railway/Render/Fly inject PORT; default to 3000 locally.
 CMD ["sh", "-c", "npx next start -p ${PORT:-3000}"]

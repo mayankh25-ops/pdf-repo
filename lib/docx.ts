@@ -160,7 +160,13 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
       children: [mono("CLEANING WORKS REPORT")],
       border: hairlineBorder,
     }),
-    new Paragraph({ spacing: { after: 300 }, children: [mono(fmtDate(report.date))] }),
+    new Paragraph({
+      spacing: { after: 300 },
+      children: [
+        mono(fmtDate(report.date)),
+        ...(report.reportNo ? [mono(`  ·  REPORT Nº ${report.reportNo}`)] : []),
+      ],
+    }),
     new Paragraph({
       spacing: { after: 400 },
       children: [
@@ -291,36 +297,35 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
     }
   }
 
-  // Back page
+  // Back page — logo, optional remarks (only when provided), meta line.
   body.push(
-    new Paragraph({ pageBreakBefore: true, spacing: { before: 4800, after: 400 }, alignment: AlignmentType.CENTER, children: logoRun() }),
     new Paragraph({
+      pageBreakBefore: true,
+      spacing: { before: 4800, after: 400 },
       alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-      children: [
-        new TextRun({
-          text: "Thank you for choosing us for your cleaning & restoration works.",
-          font: BODY,
-          size: 20,
-          color: TOKENS.muted,
-        }),
-      ],
+      children: logoRun(),
     }),
+  );
+  if (report.remarks?.trim()) {
+    body.push(
+      new Paragraph({ spacing: { after: 120 }, children: [mono("REMARKS", 14)] }),
+      new Paragraph({
+        spacing: { after: 400, line: 320 },
+        children: [
+          new TextRun({ text: report.remarks.trim(), font: BODY, size: 20, color: TOKENS.text }),
+        ],
+      }),
+    );
+  }
+  body.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
       children: [
-        new TextRun({
-          text: "Contact: hello@example.com · 020 0000 0000",
-          font: BODY,
-          size: 20,
-          color: TOKENS.muted,
-        }),
+        mono(
+          `${report.reportNo ? `REPORT Nº ${report.reportNo} · ` : ""}${report.building.toUpperCase()} · ${fmtDate(report.date)}`,
+          13,
+        ),
       ],
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [mono(`${report.building.toUpperCase()} · ${fmtDate(report.date)}`, 13)],
     }),
   );
 
@@ -361,7 +366,10 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
                 children: [
                   mono(report.building.toUpperCase(), 13),
                   new TextRun({ text: "\t", font: MONO, size: 13 }),
-                  mono(`${fmtDate(report.date)} · `, 13),
+                  mono(
+                    `${report.reportNo ? `Nº ${report.reportNo} · ` : ""}${fmtDate(report.date)} · `,
+                    13,
+                  ),
                   new TextRun({
                     children: [PageNumber.CURRENT],
                     font: MONO,

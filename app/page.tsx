@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import type { Phase } from "@/lib/types";
 import { PHASES } from "@/lib/types";
 import type { UploadedImage, WizardState } from "@/components/wizard/types";
 import { initialState, uploadFiles } from "@/components/wizard/types";
 import { Field, GhostButton, PrimaryButton, Spinner, ErrorNote, inputCls } from "@/components/wizard/ui";
+import type { MovePayload } from "@/components/wizard/UploadZone";
 import { UploadZone } from "@/components/wizard/UploadZone";
 import { TemplatePicker } from "@/components/wizard/TemplatePicker";
 
 const STEPS = ["Details", "Template", "Photos", "Generate"] as const;
 
 interface GenResult {
+  reportNo: string;
   pdfUrl: string;
   docxUrl: string;
-  expiresAt: string;
 }
 
 export default function Home() {
@@ -30,15 +33,39 @@ export default function Home() {
     window.scrollTo({ top: 0 });
   };
 
+  /** Moves a photo within or between phase zones (drag-and-drop / selector). */
+  const movePhoto = (payload: MovePayload, toPhase: Phase, toIndex: number | null) => {
+    setState((s) => {
+      const img = s.photos[payload.fromPhase].find((x) => x.id === payload.id);
+      if (!img) return s;
+      const source = s.photos[payload.fromPhase].filter((x) => x.id !== payload.id);
+      const target = payload.fromPhase === toPhase ? source : [...s.photos[toPhase]];
+      const idx = toIndex === null ? target.length : Math.min(toIndex, target.length);
+      target.splice(idx, 0, img);
+      return {
+        ...s,
+        photos: { ...s.photos, [payload.fromPhase]: source, [toPhase]: target },
+      };
+    });
+  };
+
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
-      <header className="mb-8">
-        <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-text-muted">
-          CLEANING WORKS REPORT GENERATOR
-        </p>
-        <h1 className="mt-2 font-display text-[26px] font-semibold tracking-[-0.01em] text-text sm:text-[32px]">
-          Client-ready before / during / after reports
-        </h1>
+      <header className="mb-8 flex items-end justify-between gap-4">
+        <div>
+          <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-text-muted">
+            CLEANING WORKS REPORT GENERATOR
+          </p>
+          <h1 className="mt-2 font-display text-[26px] font-semibold tracking-[-0.01em] text-text sm:text-[32px]">
+            Client-ready before / during / after reports
+          </h1>
+        </div>
+        <Link
+          href="/reports"
+          className="shrink-0 rounded-[10px] border border-border bg-bg px-4 py-2 text-[14px] font-medium text-text transition-colors hover:bg-bg-hover"
+        >
+          Reports
+        </Link>
       </header>
 
       {/* Step indicator */}
@@ -84,15 +111,16 @@ export default function Home() {
         <div className="step-enter">
           <StepHeading
             title="Add photo evidence"
-            sub="Before and after tell the story; during is optional and simply skipped if empty. Drag photos to reorder — order is kept in the report."
+            sub="Before and after tell the story; during is optional and simply skipped if empty. Drag photos to reorder, or drag them between sections if one landed in the wrong place."
           />
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="flex flex-col gap-4">
             {PHASES.map((phase) => (
               <UploadZone
                 key={phase}
                 phase={phase}
                 images={state.photos[phase]}
                 onChange={(images) => set("photos", { ...state.photos, [phase]: images })}
+                onMove={movePhoto}
               />
             ))}
           </div>
@@ -390,6 +418,7 @@ function StepGenerate({
           date: state.date,
           preparedBy: state.preparedBy || undefined,
           scope: state.scope || undefined,
+          remarks: state.remarks || undefined,
           templateId: state.templateId,
           paired: state.paired && pairable,
           buildingPhoto: state.buildingPhoto ? toMeta(state.buildingPhoto) : null,
@@ -414,7 +443,7 @@ function StepGenerate({
   const shareSubject = `${state.building} — ${state.title}, ${state.date}`;
   const pdfAbsolute = result ? `${origin}${result.pdfUrl}` : "";
   const shareBody = result
-    ? `Hi,\n\nPlease find the cleaning works report for ${state.building}.\n\nDownload (link valid 24h): ${pdfAbsolute}\n\nBest regards${state.preparedBy ? `,\n${state.preparedBy}` : ""}`
+    ? `Hi,\n\nPlease find the cleaning works report Nº ${result.reportNo} for ${state.building}.\n\nDownload: ${pdfAbsolute}\n\nBest regards${state.preparedBy ? `,\n${state.preparedBy}` : ""}`
     : "";
 
   return (
@@ -467,6 +496,18 @@ function StepGenerate({
             </span>
           </label>
 
+          <div className="mt-5">
+            <Field label="Remarks" optional>
+              <textarea
+                className={`${inputCls} min-h-20 resize-y`}
+                value={state.remarks}
+                maxLength={4000}
+                placeholder="Only appears on the last page of the report if you write something here."
+                onChange={(e) => set("remarks", e.target.value)}
+              />
+            </Field>
+          </div>
+
           <div className="mt-6">
             <PrimaryButton onClick={generate} disabled={busy || !canGenerate} full>
               {busy ? (
@@ -486,7 +527,7 @@ function StepGenerate({
           {result ? (
             <div className="step-enter flex flex-col gap-3">
               <p className="font-mono text-[11px] font-medium tracking-[0.12em] text-text-muted">
-                REPORT READY
+                REPORT Nº {result.reportNo}
               </p>
               <a
                 href={result.pdfUrl}
@@ -516,13 +557,10 @@ function StepGenerate({
                 Share via WhatsApp <span aria-hidden>→</span>
               </a>
               <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
-                Share links include a download URL that expires{" "}
-                {new Date(result.expiresAt).toLocaleString(undefined, {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  day: "2-digit",
-                  month: "short",
-                })}
+                Stored on this portal as Nº {result.reportNo} — find it anytime under{" "}
+                <Link href="/reports" className="underline decoration-hairline underline-offset-2">
+                  Reports
+                </Link>
                 . Email attachments must be added manually.
               </p>
             </div>

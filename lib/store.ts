@@ -3,7 +3,7 @@ import { readFile, writeFile, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
-import type { ReportData } from "./types";
+import type { ReportData, ReportRecord } from "./types";
 
 /**
  * Local temp-file store for v1 (no DB). Layout under $TMPDIR/cwr-data:
@@ -16,6 +16,7 @@ export const DIRS = {
   uploads: path.join(ROOT, "uploads"),
   jobs: path.join(ROOT, "jobs"),
   out: path.join(ROOT, "out"),
+  reports: path.join(ROOT, "reports"),
 };
 for (const dir of Object.values(DIRS)) mkdirSync(dir, { recursive: true });
 
@@ -78,7 +79,8 @@ export interface OutputRecord {
   ext: string;
   mime: string;
   filename: string;
-  expiresAt: number;
+  /** null = kept until manually deleted (registry copies) */
+  expiresAt: number | null;
 }
 
 export async function saveOutput(
@@ -86,13 +88,14 @@ export async function saveOutput(
   ext: string,
   mime: string,
   filename: string,
+  opts: { persistent?: boolean } = {},
 ): Promise<OutputRecord> {
   const rec: OutputRecord = {
     token: id(),
     ext,
     mime,
     filename,
-    expiresAt: Date.now() + DOWNLOAD_TTL_MS,
+    expiresAt: opts.persistent ? null : Date.now() + DOWNLOAD_TTL_MS,
   };
   await writeFile(path.join(DIRS.out, `${rec.token}.${ext}`), buffer);
   await writeFile(path.join(DIRS.out, `${rec.token}.json`), JSON.stringify(rec));
@@ -106,7 +109,7 @@ export async function readOutput(token: string) {
     const rec: OutputRecord = JSON.parse(
       await readFile(path.join(DIRS.out, `${token}.json`), "utf8"),
     );
-    if (Date.now() > rec.expiresAt) {
+    if (rec.expiresAt !== null && Date.now() > rec.expiresAt) {
       await rm(path.join(DIRS.out, `${rec.token}.${rec.ext}`), { force: true });
       await rm(path.join(DIRS.out, `${rec.token}.json`), { force: true });
       return null;
@@ -125,7 +128,7 @@ export async function cleanupExpired() {
       if (!file.endsWith(".json")) continue;
       try {
         const rec: OutputRecord = JSON.parse(await readFile(path.join(DIRS.out, file), "utf8"));
-        if (Date.now() > rec.expiresAt) {
+        if (rec.expiresAt !== null && Date.now() > rec.expiresAt) {
           await rm(path.join(DIRS.out, `${rec.token}.${rec.ext}`), { force: true });
           await rm(path.join(DIRS.out, file), { force: true });
         }
@@ -155,4 +158,57 @@ export function uploadPath(rec: UploadRecord) {
 
 export function existsUploadDir() {
   return existsSync(DIRS.uploads);
+}
+
+/* ---------------------------------------------------------------------------
+   Report registry — every generated report gets a sequential number
+   (e.g. 2026-0014) and stays on the portal for later search & download.
+--------------------------------------------------------------------------- */
+
+const COUNTER_FILE = path.join(ROOT, "report-counter.json");
+
+export async function nextReportNo(): Promise<string> {
+  const year = new Date().getFullYear();
+  let counter: { year: number; seq: number } = { year, seq: 0 };
+  try {
+    counter = JSON.parse(await readFile(COUNTER_FILE, "utf8"));
+  } catch {
+    /* first report */
+  }
+  if (counter.year !== year) counter = { year, seq: 0 };
+  counter.seq += 1;
+  await writeFile(COUNTER_FILE, JSON.stringify(counter));
+  return `${year}-${String(counter.seq).padStart(4, "0")}`;
+}
+
+export async function registerReport(record: ReportRecord): Promise<void> {
+  await writeFile(
+    path.join(DIRS.reports, `${record.reportNo.replace(/[^\w-]/g, "")}.json`),
+    JSON.stringify(record),
+  );
+}
+
+export async function listReports(query?: string): Promise<ReportRecord[]> {
+  const records: ReportRecord[] = [];
+  try {
+    for (const file of await readdir(DIRS.reports)) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        records.push(JSON.parse(await readFile(path.join(DIRS.reports, file), "utf8")));
+      } catch {
+        /* skip malformed */
+      }
+    }
+  } catch {
+    /* dir missing */
+  }
+  records.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  const q = query?.trim().toLowerCase();
+  if (!q) return records;
+  return records.filter((r) =>
+    [r.reportNo, r.title, r.building, r.preparedBy ?? "", r.date]
+      .join(" ")
+      .toLowerCase()
+      .includes(q),
+  );
 }

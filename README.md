@@ -21,10 +21,18 @@ npm run dev
 ```
 
 Open http://localhost:3000 and walk the four steps: **Details → Template →
-Photos → Generate**. `/preview` shows all five cover templates with sample
-data; `/preview?template=<id>` renders a full sample document
-(`hero-dark`, `hero-light`, `minimal-light`, `minimal-dark`,
-`editorial-split`; add `&paired=1` for the comparison layout).
+Photos → Generate**. Every generated report gets a sequential **report number**
+(e.g. `2026-0014`) and is stored on the portal — search and re-download it
+anytime at `/reports`.
+
+`/preview` shows all ten cover templates with sample data;
+`/preview?template=<id>` renders a full sample document (`hero-dark`,
+`hero-light`, `minimal-light`, `minimal-dark`, `editorial-split`, `flow-dark`,
+`quiet-caps`, `accent-panel`, `collage-card`, `filmstrip`; add `&paired=1` for
+the comparison layout).
+
+Photos are never cropped or stretched: pages adapt to orientation — two
+portraits side-by-side, two landscapes stacked, or one large photo per page.
 
 Sample imagery in `public/samples` can be regenerated with
 `npm run make-samples`.
@@ -73,6 +81,10 @@ The only deployment-sensitive piece is headless Chromium:
    24h download links additionally require object storage (S3/Blob) — a small
    always-on container is the simpler v1 choice.
 
-Set `CWR_DATA_DIR` to control where uploads/jobs/outputs are stored
-(defaults to `$TMPDIR/cwr-data`), and `INTERNAL_ORIGIN` if the server should
-reach itself on a different origin than the public one.
+Set `CWR_DATA_DIR` to control where uploads/jobs/outputs and the report
+registry are stored (defaults to `$TMPDIR/cwr-data`), and `INTERNAL_ORIGIN` if
+the server should reach itself on a different origin than the public one.
+
+**Persistence:** stored reports live on the filesystem. On Railway/Fly attach
+a volume and point `CWR_DATA_DIR` at its mount path (e.g. `/data`) so the
+report archive survives redeploys.

@@ -16,6 +16,7 @@ export interface WizardState {
   date: string;
   preparedBy: string;
   scope: string;
+  remarks: string;
   buildingPhoto: UploadedImage | null;
   logo: UploadedImage | null;
   templateId: TemplateId;
@@ -30,6 +31,7 @@ export const initialState = (): WizardState => ({
   date: new Date().toISOString().slice(0, 10),
   preparedBy: "",
   scope: "",
+  remarks: "",
   buildingPhoto: null,
   logo: null,
   templateId: "hero-dark",

@@ -61,40 +61,66 @@ export function TagChip({ phase }: { phase: Phase }) {
   );
 }
 
-/** A single photo cell with tag chip and optional caption. */
+/** Fits image dimensions into a box, preserving aspect ratio exactly. */
+export const fitBox = (imgW: number, imgH: number, maxW: number, maxH: number) => {
+  const scale = Math.min(maxW / Math.max(imgW, 1), maxH / Math.max(imgH, 1));
+  return { w: imgW * scale, h: imgH * scale };
+};
+
+/**
+ * A single photo sized to its exact aspect ratio (never stretched or cropped)
+ * inside a boxW x boxH mm slot, with tag chip and optional caption.
+ */
 export function PhotoCell({
   photo,
   phase,
-  className,
+  boxW,
+  boxH,
   style,
 }: {
   photo: PhotoView;
   phase: Phase;
-  className?: string;
+  /** slot size in mm the image must fit inside */
+  boxW: number;
+  boxH: number;
   style?: React.CSSProperties;
 }) {
+  const { w, h } = fitBox(photo.width, photo.height, boxW, boxH);
   return (
-    <figure className={className} style={{ display: "flex", flexDirection: "column", minHeight: 0, ...style }}>
-      <div style={{ position: "relative", flex: 1, minHeight: 0, background: "var(--bg-element)" }}>
+    <figure
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        margin: 0,
+        minWidth: 0,
+        minHeight: 0,
+        ...style,
+      }}
+    >
+      <div style={{ position: "relative", width: `${w}mm`, height: `${h}mm` }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photo.url}
           alt={photo.caption ?? PHASE_LABEL[phase]}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
         />
         <TagChip phase={phase} />
       </div>
-      <figcaption
-        style={{
-          fontSize: "8.5pt",
-          lineHeight: 1.4,
-          color: "var(--text-muted)",
-          paddingTop: "2mm",
-          minHeight: "6mm",
-        }}
-      >
-        {photo.caption ?? " "}
-      </figcaption>
+      {photo.caption ? (
+        <figcaption
+          style={{
+            fontSize: "8.5pt",
+            lineHeight: 1.4,
+            color: "var(--text-muted)",
+            paddingTop: "1.8mm",
+            width: `${w}mm`,
+          }}
+        >
+          {photo.caption}
+        </figcaption>
+      ) : null}
     </figure>
   );
 }
@@ -110,6 +136,7 @@ export function ChromePage({
   date,
   logo,
   pageNo,
+  reportNo,
   children,
   contentStyle,
 }: {
@@ -119,6 +146,7 @@ export function ChromePage({
   date: string;
   logo?: PhotoView | null;
   pageNo: number;
+  reportNo?: string;
   children: React.ReactNode;
   contentStyle?: React.CSSProperties;
 }) {
@@ -159,6 +187,7 @@ export function ChromePage({
           {building.toUpperCase()}
         </span>
         <span className="doc-mono" style={{ fontSize: "7pt", color: "var(--text-muted)" }}>
+          {reportNo ? `Nº ${reportNo} · ` : ""}
           {fmtDate(date)} · {String(pageNo).padStart(2, "0")}
         </span>
       </footer>

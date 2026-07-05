@@ -46,6 +46,41 @@ export const TEMPLATES: TemplateDef[] = [
     dark: false,
     usesPhoto: true,
   },
+  {
+    id: "flow-dark",
+    name: "Flow — Dark",
+    blurb: "Near-black cover, accent display title, flowing hairline curves, accent base bar.",
+    dark: true,
+    usesPhoto: false,
+  },
+  {
+    id: "quiet-caps",
+    name: "Quiet Caps",
+    blurb: "Letterspaced capitals centred over the darkened building photo.",
+    dark: true,
+    usesPhoto: true,
+  },
+  {
+    id: "accent-panel",
+    name: "Accent Panel",
+    blurb: "Solid accent panel overlapping the building photo, title on the panel.",
+    dark: false,
+    usesPhoto: true,
+  },
+  {
+    id: "collage-card",
+    name: "Collage Card",
+    blurb: "Before / during / after photo collage behind a centred white card.",
+    dark: false,
+    usesPhoto: true,
+  },
+  {
+    id: "filmstrip",
+    name: "Filmstrip",
+    blurb: "Light cover with a vertical tagged photo filmstrip down the right edge.",
+    dark: false,
+    usesPhoto: true,
+  },
 ];
 
 export const getTemplate = (id: TemplateId): TemplateDef =>

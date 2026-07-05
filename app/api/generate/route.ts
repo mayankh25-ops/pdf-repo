@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Phase, ReportData, TemplateId } from "@/lib/types";
 import { renderPdf } from "@/lib/pdf";
 import { renderDocx } from "@/lib/docx";
-import { saveJob, saveOutput } from "@/lib/store";
+import { nextReportNo, registerReport, saveJob, saveOutput } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -13,6 +13,11 @@ const TEMPLATE_IDS: TemplateId[] = [
   "minimal-light",
   "minimal-dark",
   "editorial-split",
+  "flow-dark",
+  "quiet-caps",
+  "accent-panel",
+  "collage-card",
+  "filmstrip",
 ];
 
 const str = (v: unknown, max: number): string =>
@@ -53,6 +58,7 @@ function sanitize(input: unknown): ReportData | null {
       : new Date().toISOString().slice(0, 10),
     preparedBy: str(raw.preparedBy, 100) || undefined,
     scope: str(raw.scope, 4000) || undefined,
+    remarks: str(raw.remarks, 4000) || undefined,
     templateId: TEMPLATE_IDS.includes(raw.templateId as TemplateId)
       ? (raw.templateId as TemplateId)
       : "hero-dark",
@@ -91,6 +97,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    report.reportNo = await nextReportNo();
     const jobId = await saveJob(report);
     const proto = req.headers.get("x-forwarded-proto") ?? "http";
     const host = req.headers.get("host") ?? "localhost:3000";
@@ -101,19 +108,34 @@ export async function POST(req: NextRequest) {
       renderDocx(report),
     ]);
 
-    const base = `${slug(report.building)}-${slug(report.title)}-${report.date}`;
-    const pdfOut = await saveOutput(pdf, "pdf", "application/pdf", `${base}.pdf`);
+    const base = `report-${report.reportNo}-${slug(report.building)}`;
+    const pdfOut = await saveOutput(pdf, "pdf", "application/pdf", `${base}.pdf`, {
+      persistent: true,
+    });
     const docxOut = await saveOutput(
       docx,
       "docx",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       `${base}.docx`,
+      { persistent: true },
     );
 
+    await registerReport({
+      reportNo: report.reportNo,
+      title: report.title,
+      building: report.building,
+      date: report.date,
+      preparedBy: report.preparedBy,
+      templateId: report.templateId,
+      createdAt: new Date().toISOString(),
+      pdfToken: pdfOut.token,
+      docxToken: docxOut.token,
+    });
+
     return NextResponse.json({
+      reportNo: report.reportNo,
       pdfUrl: `/api/files/${pdfOut.token}`,
       docxUrl: `/api/files/${docxOut.token}`,
-      expiresAt: new Date(pdfOut.expiresAt).toISOString(),
       pdfBytes: pdf.length,
     });
   } catch (err) {

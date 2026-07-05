@@ -41,6 +41,11 @@ export function previewView(state: WizardState, templateId: TemplateId): ReportV
     scope: state.scope.trim() || sample.scope,
     buildingPhoto: state.buildingPhoto ?? sample.buildingPhoto,
     logo: state.logo ?? sample.logo,
+    photos: {
+      before: state.photos.before.length ? state.photos.before : sample.photos.before,
+      during: state.photos.during.length ? state.photos.during : sample.photos.during,
+      after: state.photos.after.length ? state.photos.after : sample.photos.after,
+    },
   };
 }
 

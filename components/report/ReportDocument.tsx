@@ -5,13 +5,94 @@ import type { PhotoView, ReportView } from "@/lib/sample";
 import { ChromePage, Logo, PhotoCell, fmtDate } from "./primitives";
 import { Cover } from "./covers";
 
-const chunk = <T,>(arr: T[], size: number): T[][] => {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-};
+/* Content column inside a ChromePage: 210−32 wide, ~240mm usable height. */
+const CONTENT_W = 178;
+const CONTENT_H = 240;
+const GAP = 6;
 
 const SECTION_INDEX: Record<Phase, string> = { before: "01", during: "02", after: "03" };
+
+const isPortrait = (p: PhotoView) => p.height >= p.width;
+
+type SpreadKind = "single" | "portrait-pair" | "landscape-pair";
+interface Spread {
+  kind: SpreadKind;
+  photos: PhotoView[];
+}
+
+/**
+ * Groups photos into pages without ever distorting or cropping them:
+ * two portraits sit side-by-side, two landscapes stack, and a mixed or
+ * leftover photo gets a full page to itself. Order is preserved.
+ */
+function paginate(photos: PhotoView[]): Spread[] {
+  const spreads: Spread[] = [];
+  let i = 0;
+  while (i < photos.length) {
+    const a = photos[i];
+    const b = photos[i + 1];
+    if (b && isPortrait(a) && isPortrait(b)) {
+      spreads.push({ kind: "portrait-pair", photos: [a, b] });
+      i += 2;
+    } else if (b && !isPortrait(a) && !isPortrait(b)) {
+      spreads.push({ kind: "landscape-pair", photos: [a, b] });
+      i += 2;
+    } else {
+      spreads.push({ kind: "single", photos: [a] });
+      i += 1;
+    }
+  }
+  return spreads;
+}
+
+function SpreadBlock({ spread, phase }: { spread: Spread; phase: Phase }) {
+  if (spread.kind === "portrait-pair") {
+    const boxW = (CONTENT_W - GAP) / 2;
+    return (
+      <div style={{ flex: 1, minHeight: 0, display: "flex", gap: `${GAP}mm`, alignItems: "center" }}>
+        {spread.photos.map((p) => (
+          <PhotoCell key={p.id} photo={p} phase={phase} boxW={boxW} boxH={CONTENT_H - 14} style={{ flex: 1 }} />
+        ))}
+      </div>
+    );
+  }
+  if (spread.kind === "landscape-pair") {
+    const boxH = (CONTENT_H - GAP - 20) / 2;
+    return (
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: `${GAP}mm`,
+          justifyContent: "center",
+        }}
+      >
+        {spread.photos.map((p) => (
+          <PhotoCell key={p.id} photo={p} phase={phase} boxW={CONTENT_W} boxH={boxH} style={{ flex: 1 }} />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <PhotoCell photo={spread.photos[0]} phase={phase} boxW={CONTENT_W} boxH={CONTENT_H - 16} />
+    </div>
+  );
+}
+
+/** Comparison row: before-left / after-right, aspect ratios preserved. */
+function ComparisonRow({ pair }: { pair: [PhotoView, PhotoView] }) {
+  const boxW = (CONTENT_W - GAP) / 2;
+  const boxH = (CONTENT_H - GAP) / 2 - 14;
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: "flex", gap: `${GAP}mm`, alignItems: "center" }}>
+      <PhotoCell photo={pair[0]} phase="before" boxW={boxW} boxH={boxH} style={{ flex: 1 }} />
+      <PhotoCell photo={pair[1]} phase="after" boxW={boxW} boxH={boxH} style={{ flex: 1 }} />
+    </div>
+  );
+}
 
 /** Section divider page, styled to the template family (light/dark chrome). */
 function Divider({
@@ -94,37 +175,6 @@ function Divider({
   );
 }
 
-/** Up to two photos per page; two portraits sit side-by-side, otherwise stacked. */
-function PhotoSpread({ photos, phase }: { photos: PhotoView[]; phase: Phase }) {
-  const bothPortrait = photos.length === 2 && photos.every((p) => p.height > p.width);
-  if (bothPortrait) {
-    return (
-      <div style={{ flex: 1, minHeight: 0, display: "flex", gap: "6mm" }}>
-        {photos.map((p) => (
-          <PhotoCell key={p.id} photo={p} phase={phase} style={{ flex: 1 }} />
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "6mm" }}>
-      {photos.map((p) => (
-        <PhotoCell key={p.id} photo={p} phase={phase} style={{ flex: 1 }} />
-      ))}
-    </div>
-  );
-}
-
-/** Comparison row: before-left / after-right. */
-function ComparisonRow({ pair }: { pair: [PhotoView, PhotoView] }) {
-  return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex", gap: "6mm" }}>
-      <PhotoCell photo={pair[0]} phase="before" style={{ flex: 1 }} />
-      <PhotoCell photo={pair[1]} phase="after" style={{ flex: 1 }} />
-    </div>
-  );
-}
-
 function ScopeBody({ r }: { r: ReportView }) {
   return (
     <div style={{ maxWidth: "150mm" }}>
@@ -149,7 +199,12 @@ function ScopeBody({ r }: { r: ReportView }) {
   );
 }
 
+/**
+ * Back page: logo, optional remarks (only when the user filled them in) and
+ * the report meta line. No boilerplate copy.
+ */
 function BackPage({ r, dark }: { r: ReportView; dark: boolean }) {
+  const remarks = r.remarks?.trim();
   return (
     <section className={`doc-page${dark ? " dark" : ""}`}>
       <div
@@ -161,24 +216,37 @@ function BackPage({ r, dark }: { r: ReportView; dark: boolean }) {
           justifyContent: "center",
           gap: "8mm",
           padding: "16mm",
-          textAlign: "center",
         }}
       >
         <Logo logo={r.logo} heightMm={10} reversed={dark} />
         <div style={{ width: "18mm", borderTop: "1px solid var(--hairline)" }} />
-        <div style={{ fontSize: "9.5pt", color: "var(--text-muted)", lineHeight: 1.8 }}>
-          Thank you for choosing us for your cleaning &amp; restoration works.
-          <br />
-          Contact: hello@example.com · 020 0000 0000
-        </div>
+        {remarks ? (
+          <div style={{ maxWidth: "130mm", textAlign: "left" }}>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                letterSpacing: "0.12em",
+                fontSize: "7.5pt",
+                fontWeight: 500,
+                color: "var(--text-muted)",
+                marginBottom: "3mm",
+              }}
+            >
+              REMARKS
+            </div>
+            <p style={{ fontSize: "10pt", lineHeight: 1.7, whiteSpace: "pre-wrap", margin: 0 }}>{remarks}</p>
+          </div>
+        ) : null}
         <div
           style={{
             fontFamily: "var(--font-mono)",
             letterSpacing: "0.1em",
             fontSize: "7pt",
             color: "var(--text-tertiary)",
+            textAlign: "center",
           }}
         >
+          {r.reportNo ? `REPORT Nº ${r.reportNo} · ` : ""}
           {r.building.toUpperCase()} · {fmtDate(r.date)}
         </div>
       </div>
@@ -208,6 +276,7 @@ export function ReportDocument({ r }: { r: ReportView }) {
         date={r.date}
         logo={r.logo}
         pageNo={pageNo}
+        reportNo={r.reportNo}
         contentStyle={contentStyle}
       >
         {children}
@@ -233,8 +302,8 @@ export function ReportDocument({ r }: { r: ReportView }) {
         building={r.building}
       />,
     );
-    chunk(photos, 2).forEach((group, i) =>
-      chrome(`${phase}-${index}-${i}`, <PhotoSpread photos={group} phase={phase} />),
+    paginate(photos).forEach((spread, i) =>
+      chrome(`${phase}-${index}-${i}`, <SpreadBlock spread={spread} phase={phase} />),
     );
   };
 
@@ -252,16 +321,26 @@ export function ReportDocument({ r }: { r: ReportView }) {
         building={r.building}
       />,
     );
-    chunk(pairs, 2).forEach((group, i) =>
+    for (let i = 0; i < pairs.length; i += 2) {
+      const group = pairs.slice(i, i + 2);
       chrome(
         `compare-${i}`,
-        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "6mm" }}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: `${GAP}mm`,
+            justifyContent: "center",
+          }}
+        >
           {group.map((pair, j) => (
             <ComparisonRow key={j} pair={pair} />
           ))}
         </div>,
-      ),
-    );
+      );
+    }
     addSection("during", PHASE_TITLE.during, "02", r.photos.during);
   } else {
     for (const phase of PHASES) {

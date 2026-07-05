@@ -5,11 +5,13 @@ export interface PhotoView extends PhotoMeta {
 }
 
 export interface ReportView {
+  reportNo?: string;
   title: string;
   building: string;
   date: string;
   preparedBy?: string;
   scope?: string;
+  remarks?: string;
   templateId: TemplateId;
   paired: boolean;
   buildingPhoto?: PhotoView | null;
@@ -38,6 +40,7 @@ const sm = (name: string, width: number, height: number, caption?: string): Phot
 
 /** Sample report used by the template picker previews and /preview routes. */
 export const sampleReport = (templateId: TemplateId = "hero-dark"): ReportView => ({
+  reportNo: "2026-0001",
   title: "External Facade & Communal Areas Deep Clean",
   building: "Riverside House, 12 Embankment Way",
   date: new Date().toISOString().slice(0, 10),

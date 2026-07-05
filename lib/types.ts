@@ -19,7 +19,12 @@ export type TemplateId =
   | "hero-light"
   | "minimal-light"
   | "minimal-dark"
-  | "editorial-split";
+  | "editorial-split"
+  | "flow-dark"
+  | "quiet-caps"
+  | "accent-panel"
+  | "collage-card"
+  | "filmstrip";
 
 export interface PhotoMeta {
   id: string;
@@ -29,12 +34,16 @@ export interface PhotoMeta {
 }
 
 export interface ReportData {
+  /** Portal-assigned report number, e.g. "2026-0014" (set at generate time) */
+  reportNo?: string;
   title: string;
   building: string;
   /** ISO date string (yyyy-mm-dd) */
   date: string;
   preparedBy?: string;
   scope?: string;
+  /** Optional remarks shown on the last page only when filled in */
+  remarks?: string;
   templateId: TemplateId;
   /** Paired before/after comparison layout when counts match */
   paired: boolean;
@@ -44,7 +53,19 @@ export interface ReportData {
 }
 
 export interface GenerateResult {
+  reportNo: string;
   pdfUrl: string;
   docxUrl: string;
-  expiresAt: string;
+}
+
+export interface ReportRecord {
+  reportNo: string;
+  title: string;
+  building: string;
+  date: string;
+  preparedBy?: string;
+  templateId: TemplateId;
+  createdAt: string;
+  pdfToken: string;
+  docxToken: string;
 }

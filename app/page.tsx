@@ -147,9 +147,13 @@ export default function Home() {
           profiles={profiles}
           selectedId={profile?.id ?? "focused-fm"}
           onSelect={setProfileId}
-          onCreated={(created) => {
-            setProfiles((list) => [...list, created]);
-            setProfileId(created.id);
+          onSaved={(saved) => {
+            setProfiles((list) =>
+              list.some((p) => p.id === saved.id)
+                ? list.map((p) => (p.id === saved.id ? saved : p))
+                : [...list, saved],
+            );
+            setProfileId(saved.id);
           }}
         />
       </div>

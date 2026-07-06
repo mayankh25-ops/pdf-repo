@@ -109,7 +109,11 @@ export async function POST(req: NextRequest) {
       (typeof body?.profileId === "string" ? await getProfile(body.profileId) : null) ??
       (await getProfile("focused-fm"));
     if (profile) {
-      report.company = { name: profile.name, accent: profile.accent };
+      report.company = {
+        name: profile.name,
+        accent: profile.accent,
+        logoScale: profile.logoScale,
+      };
       report.logo = {
         id: profile.logoId,
         width: profile.logoWidth,

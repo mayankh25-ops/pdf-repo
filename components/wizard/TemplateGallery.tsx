@@ -49,7 +49,9 @@ export function previewView(
     scope: state.scope.trim() || undefined,
     remarks: state.remarks.trim() || undefined,
     paired: state.paired,
-    company: profile ? { name: profile.name, accent: profile.accent } : sample.company,
+    company: profile
+      ? { name: profile.name, accent: profile.accent, logoScale: profile.logoScale }
+      : sample.company,
     buildingPhoto: state.buildingPhoto ?? sample.buildingPhoto,
     logo: profile ? { ...profile.logo, caption: undefined } : sample.logo,
     photos: {

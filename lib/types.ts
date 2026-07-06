@@ -44,6 +44,8 @@ export interface CompanyInfo {
   name: string;
   /** brand accent used by the document templates (e.g. Focused red) */
   accent?: string;
+  /** multiplier for the logo size in documents (default 1) */
+  logoScale?: number;
 }
 
 export interface ReportData {

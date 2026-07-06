@@ -177,6 +177,8 @@ export interface CompanyProfile {
   logoId: string;
   logoWidth: number;
   logoHeight: number;
+  /** multiplier for the logo size in documents (default 1) */
+  logoScale: number;
   createdAt: string;
 }
 
@@ -187,16 +189,24 @@ export const DEFAULT_PROFILE: CompanyProfile = {
   logoId: "builtin:focused-fm",
   logoWidth: 72,
   logoHeight: 47,
+  logoScale: 1,
   createdAt: "2026-01-01T00:00:00.000Z",
 };
 
+const profileFile = (profileId: string) =>
+  path.join(DIRS.profiles, `${profileId.replace(/[^\w-]/g, "")}.json`);
+
+/** Built-in profile plus stored ones; an edit to the built-in overlays it. */
 export async function listProfiles(): Promise<CompanyProfile[]> {
-  const profiles: CompanyProfile[] = [DEFAULT_PROFILE];
+  const byId = new Map<string, CompanyProfile>([[DEFAULT_PROFILE.id, DEFAULT_PROFILE]]);
   try {
     for (const file of await readdir(DIRS.profiles)) {
       if (!file.endsWith(".json")) continue;
       try {
-        profiles.push(JSON.parse(await readFile(path.join(DIRS.profiles, file), "utf8")));
+        const record: CompanyProfile = JSON.parse(
+          await readFile(path.join(DIRS.profiles, file), "utf8"),
+        );
+        byId.set(record.id, { ...record, logoScale: record.logoScale ?? 1 });
       } catch {
         /* skip malformed */
       }
@@ -204,24 +214,36 @@ export async function listProfiles(): Promise<CompanyProfile[]> {
   } catch {
     /* dir missing */
   }
-  return profiles.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  return [...byId.values()].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
 }
 
+/** Creates a profile, or updates one (partial fields) when `id` is given. */
 export async function saveProfile(
-  profile: Omit<CompanyProfile, "id" | "createdAt">,
-): Promise<CompanyProfile> {
-  const record: CompanyProfile = { ...profile, id: id(), createdAt: new Date().toISOString() };
-  await writeFile(path.join(DIRS.profiles, `${record.id}.json`), JSON.stringify(record));
+  profile: Partial<CompanyProfile> & Pick<CompanyProfile, "name" | "accent">,
+): Promise<CompanyProfile | null> {
+  const existing = profile.id ? await getProfile(profile.id) : null;
+  if (profile.id && !existing) return null;
+  if (!existing && !profile.logoId) return null;
+  const record: CompanyProfile = {
+    logoId: "",
+    logoWidth: 0,
+    logoHeight: 0,
+    logoScale: 1,
+    createdAt: new Date().toISOString(),
+    ...existing,
+    ...profile,
+    id: existing?.id ?? id(),
+  };
+  await writeFile(profileFile(record.id), JSON.stringify(record));
   return record;
 }
 
 export async function getProfile(profileId: string): Promise<CompanyProfile | null> {
-  if (profileId === DEFAULT_PROFILE.id) return DEFAULT_PROFILE;
-  if (!safe(profileId)) return null;
   try {
-    return JSON.parse(await readFile(path.join(DIRS.profiles, `${profileId}.json`), "utf8"));
+    const record: CompanyProfile = JSON.parse(await readFile(profileFile(profileId), "utf8"));
+    return { ...record, logoScale: record.logoScale ?? 1 };
   } catch {
-    return null;
+    return profileId === DEFAULT_PROFILE.id ? DEFAULT_PROFILE : null;
   }
 }
 

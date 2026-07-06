@@ -27,9 +27,9 @@ export function Logo({
       src={logo.url}
       alt=""
       style={{
-        height: `${heightMm}mm`,
+        height: `calc(${heightMm}mm * var(--logo-scale, 1))`,
         width: "auto",
-        maxWidth: "60mm",
+        maxWidth: `calc(60mm * var(--logo-scale, 1))`,
         objectFit: "contain",
         filter: reversed ? "invert(1) brightness(1.6) grayscale(1)" : undefined,
       }}

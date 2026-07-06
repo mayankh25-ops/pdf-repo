@@ -77,7 +77,17 @@ export function FocusedPage({ r, children }: { r: ReportView; children: React.Re
       >
         {r.logo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={r.logo.url} alt="" style={{ height: "8mm", width: "auto", maxWidth: "40mm", objectFit: "contain" }} />
+          <img
+            src={r.logo.url}
+            alt=""
+            style={{
+              height: "calc(8mm * var(--logo-scale, 1))",
+              maxHeight: "12mm",
+              width: "auto",
+              maxWidth: "calc(40mm * var(--logo-scale, 1))",
+              objectFit: "contain",
+            }}
+          />
         ) : (
           <span />
         )}

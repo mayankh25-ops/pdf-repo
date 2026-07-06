@@ -345,10 +345,14 @@ export function buildDocumentPages(r: ReportView): React.ReactNode[] {
  * layout children so print pagination is unaffected.
  */
 export function DocAccent({ r, children }: { r: ReportView; children: React.ReactNode }) {
-  const accentStyle = r.company?.accent
-    ? ({ "--accent": r.company.accent, "--accent-contrast": "#ffffff" } as React.CSSProperties)
-    : undefined;
-  return <div style={{ display: "contents", ...accentStyle }}>{children}</div>;
+  const style: React.CSSProperties = {
+    display: "contents",
+    ...(r.company?.accent
+      ? { "--accent": r.company.accent, "--accent-contrast": "#ffffff" }
+      : null),
+    "--logo-scale": String(r.company?.logoScale ?? 1),
+  } as React.CSSProperties;
+  return <div style={style}>{children}</div>;
 }
 
 /**

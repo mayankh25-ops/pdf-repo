@@ -10,6 +10,7 @@ const toClient = (p: Awaited<ReturnType<typeof listProfiles>>[number]) => ({
   id: p.id,
   name: p.name,
   accent: p.accent,
+  logoScale: p.logoScale,
   logo: { id: p.logoId, url: assetUrl(p.logoId), width: p.logoWidth, height: p.logoHeight },
 });
 
@@ -17,46 +18,54 @@ export async function GET() {
   return NextResponse.json({ profiles: (await listProfiles()).map(toClient) });
 }
 
-/** Creates a company profile: multipart form with name, accent, logo file. */
+/**
+ * Creates or updates a company profile. Multipart form:
+ *   name, accent, logoScale, optional id (= update), optional logo file
+ * (required when creating; when updating, omitting keeps the current logo).
+ */
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
+    const id = String(form.get("id") ?? "").trim() || undefined;
     const name = String(form.get("name") ?? "").trim().slice(0, 120);
     const accentRaw = String(form.get("accent") ?? "").trim();
     const accent = /^#[0-9a-fA-F]{6}$/.test(accentRaw) ? accentRaw : "#D9232E";
+    const scaleRaw = Number(form.get("logoScale"));
+    const logoScale = Number.isFinite(scaleRaw) ? Math.min(3, Math.max(0.5, scaleRaw)) : 1;
     if (!name) return NextResponse.json({ error: "Brand name is required." }, { status: 400 });
 
+    let logoFields: { logoId: string; logoWidth: number; logoHeight: number } | undefined;
     const logoFile = form.get("logo");
-    if (!(logoFile instanceof File) || logoFile.size === 0) {
+    if (logoFile instanceof File && logoFile.size > 0) {
+      if (!ACCEPTED_LOGO_MIME.includes(logoFile.type)) {
+        return NextResponse.json({ error: "Logo must be SVG, PNG, JPEG or WebP." }, { status: 415 });
+      }
+      if (logoFile.size > MAX_UPLOAD_BYTES) {
+        return NextResponse.json({ error: "Logo file is too large." }, { status: 413 });
+      }
+      const processed = await processLogo(Buffer.from(await logoFile.arrayBuffer()), logoFile.type);
+      const rec = await saveUpload(
+        processed.buffer,
+        processed.ext,
+        processed.mime,
+        processed.width,
+        processed.height,
+      );
+      logoFields = { logoId: rec.id, logoWidth: rec.width, logoHeight: rec.height };
+    } else if (!id) {
       return NextResponse.json({ error: "A logo file is required." }, { status: 400 });
     }
-    if (!ACCEPTED_LOGO_MIME.includes(logoFile.type)) {
-      return NextResponse.json({ error: "Logo must be SVG, PNG, JPEG or WebP." }, { status: 415 });
+
+    const profile = await saveProfile({ id, name, accent, logoScale, ...logoFields });
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found." }, { status: 404 });
     }
-    if (logoFile.size > MAX_UPLOAD_BYTES) {
-      return NextResponse.json({ error: "Logo file is too large." }, { status: 413 });
-    }
-    const processed = await processLogo(Buffer.from(await logoFile.arrayBuffer()), logoFile.type);
-    const rec = await saveUpload(
-      processed.buffer,
-      processed.ext,
-      processed.mime,
-      processed.width,
-      processed.height,
-    );
-    const profile = await saveProfile({
-      name,
-      accent,
-      logoId: rec.id,
-      logoWidth: rec.width,
-      logoHeight: rec.height,
-    });
     return NextResponse.json({ profile: toClient(profile) });
   } catch (err) {
     if (err instanceof ImageError) {
       return NextResponse.json({ error: err.message }, { status: 422 });
     }
     console.error("[profiles]", err);
-    return NextResponse.json({ error: "Could not create the profile." }, { status: 500 });
+    return NextResponse.json({ error: "Could not save the profile." }, { status: 500 });
   }
 }

@@ -124,12 +124,13 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
 
   let logoPng: Buffer | null = null;
   let logoDims = { width: 120, height: 33 };
+  const logoScale = Math.min(3, Math.max(0.5, report.company?.logoScale ?? 1));
   if (report.logo?.id.startsWith("builtin:")) {
     try {
       logoPng = await readFile(
         path.join(process.cwd(), "public", "brand", `${report.logo.id.slice(8)}.png`),
       );
-      const scale = Math.min(120 / report.logo.width, 40 / report.logo.height, 2);
+      const scale = Math.min(120 / report.logo.width, 40 / report.logo.height, 2) * logoScale;
       logoDims = {
         width: Math.round(report.logo.width * scale),
         height: Math.round(report.logo.height * scale),
@@ -147,7 +148,7 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
           : found.data;
       const meta = await sharp(logoPng).metadata();
       if (meta.width && meta.height) {
-        const scale = Math.min(140 / meta.width, 42 / meta.height, 1);
+        const scale = Math.min(140 / meta.width, 42 / meta.height, 1) * logoScale;
         logoDims = {
           width: Math.round(meta.width * scale),
           height: Math.round(meta.height * scale),

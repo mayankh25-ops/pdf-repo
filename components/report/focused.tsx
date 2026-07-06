@@ -31,6 +31,7 @@ const TAG_COLOR: Record<Phase, string> = {
   before: "var(--tag-before)",
   during: "var(--tag-during)",
   after: "var(--tag-after)",
+  general: "transparent",
 };
 
 const CONTENT_W = 182; // 210 − 2×14mm margins
@@ -42,6 +43,7 @@ function Img({ url, style }: { url: string; style?: React.CSSProperties }) {
 
 /** Coloured phase pill, placed under photos exactly like the references. */
 export function PhasePill({ phase }: { phase: Phase }) {
+  if (!PHASE_LABEL[phase]) return null;
   return (
     <span
       style={{
@@ -397,12 +399,14 @@ export function FocusedPhotoBlock({
       >
         <Img url={photo.url} />
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "3mm", marginTop: "4mm" }}>
-        <PhasePill phase={phase} />
-        {photo.caption && (
-          <span style={{ fontSize: "8.5pt", color: "var(--text-muted)" }}>{photo.caption}</span>
-        )}
-      </div>
+      {(PHASE_LABEL[phase] || photo.caption) && (
+        <div style={{ display: "flex", alignItems: "center", gap: "3mm", marginTop: "4mm" }}>
+          <PhasePill phase={phase} />
+          {photo.caption && (
+            <span style={{ fontSize: "8.5pt", color: "var(--text-muted)" }}>{photo.caption}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -37,8 +37,9 @@ export function Logo({
   );
 }
 
-/** Small tag chip overlaid on every photo: BEFORE / DURING WORK / AFTER */
+/** Small tag chip overlaid on tagged photos; untagged photos get none. */
 export function TagChip({ phase }: { phase: Phase }) {
+  if (!PHASE_LABEL[phase]) return null;
   return (
     <span
       className="doc-mono"

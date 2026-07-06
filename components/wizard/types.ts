@@ -37,7 +37,7 @@ export const initialState = (): WizardState => ({
   remarks: "",
   buildingPhoto: null,
   templateIds: ["focused-photo"],
-  photos: { before: [], during: [], after: [] },
+  photos: { before: [], during: [], after: [], general: [] },
   paired: false,
 });
 

@@ -37,6 +37,7 @@ export const toView = (r: ReportData, url: (id: string) => string): ReportView =
     before: r.photos.before.map((p) => ({ ...p, url: url(p.id) })),
     during: r.photos.during.map((p) => ({ ...p, url: url(p.id) })),
     after: r.photos.after.map((p) => ({ ...p, url: url(p.id) })),
+    general: (r.photos.general ?? []).map((p) => ({ ...p, url: url(p.id) })),
   },
 });
 
@@ -90,5 +91,6 @@ export const sampleReport = (templateId: TemplateId = "focused-photo"): ReportVi
       sm("after-3.jpg", 1600, 1067, "Lobby floor re-sealed"),
       sm("after-4.jpg", 1067, 1600, "Stair core, complete"),
     ],
+    general: [],
   },
 });

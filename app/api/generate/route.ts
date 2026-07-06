@@ -74,14 +74,15 @@ function sanitize(input: unknown): ReportData | null {
       before: photoList(photos?.before),
       during: photoList(photos?.during),
       after: photoList(photos?.after),
+      general: photoList(photos?.general),
     },
   };
-  if (
-    report.photos.before.length + report.photos.during.length + report.photos.after.length ===
-    0
-  ) {
-    return null;
-  }
+  const totalPhotos =
+    report.photos.before.length +
+    report.photos.during.length +
+    report.photos.after.length +
+    report.photos.general.length;
+  if (totalPhotos === 0) return null;
   return report;
 }
 

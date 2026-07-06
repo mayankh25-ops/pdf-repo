@@ -6,7 +6,7 @@ import type { TemplateId } from "@/lib/types";
 import type { ReportView } from "@/lib/sample";
 import { sampleReport } from "@/lib/sample";
 import { Cover } from "@/components/report/covers";
-import { DocAccent, buildDocumentPages } from "@/components/report/ReportDocument";
+import { DocAccent } from "@/components/report/ReportDocument";
 import type { CompanyProfileView } from "./CompanyPicker";
 import type { WizardState } from "./types";
 
@@ -56,6 +56,7 @@ export function previewView(
       before: state.photos.before.length ? state.photos.before : sample.photos.before,
       during: state.photos.during.length ? state.photos.during : sample.photos.during,
       after: state.photos.after.length ? state.photos.after : sample.photos.after,
+      general: state.photos.general,
     },
   };
 }
@@ -118,36 +119,6 @@ export function TemplateGallery({
           </button>
         );
       })}
-    </div>
-  );
-}
-
-/**
- * Full compiled report preview for one template — every page, with the
- * user's photos, theme accent, remarks and pairing applied. Shown on the
- * final step for the selected template(s).
- */
-export function CompiledPreview({
-  state,
-  profile,
-  templateId,
-}: {
-  state: WizardState;
-  profile?: CompanyProfileView | null;
-  templateId: TemplateId;
-}) {
-  const view = useMemo(
-    () => previewView(state, templateId, profile),
-    [state, templateId, profile],
-  );
-  const pages = useMemo(() => buildDocumentPages(view), [view]);
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-      {pages.map((page, i) => (
-        <ResponsiveThumb key={i}>
-          <DocAccent r={view}>{page}</DocAccent>
-        </ResponsiveThumb>
-      ))}
     </div>
   );
 }

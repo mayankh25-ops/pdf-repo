@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { Phase } from "@/lib/types";
-import { PHASES, PHASE_LABEL } from "@/lib/types";
+import { PHASES } from "@/lib/types";
 import type { UploadedImage } from "./types";
 import { uploadFiles } from "./types";
 import { ErrorNote, Spinner } from "./ui";
@@ -11,6 +11,15 @@ const ZONE_COPY: Record<Phase, string> = {
   before: "Dirty or damaged areas, prior to works",
   during: "Work in progress — optional, skipped if empty",
   after: "The cleaned, completed result",
+  general: "No tag — these photos appear without any label",
+};
+
+/** Zone titles; documents use PHASE_LABEL (blank = untagged). */
+const ZONE_TITLE: Record<Phase, string> = {
+  before: "BEFORE",
+  during: "DURING WORK",
+  after: "AFTER",
+  general: "NO TAG",
 };
 
 const DND_MIME = "application/x-cwr-photo";
@@ -97,7 +106,7 @@ export function UploadZone({
       <header className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="font-mono text-[12px] font-medium tracking-[0.1em] text-text">
-            {PHASE_LABEL[phase]}
+            {ZONE_TITLE[phase]}
           </h3>
           <p className="mt-0.5 text-[12.5px] text-text-muted">{ZONE_COPY[phase]}</p>
         </div>
@@ -193,7 +202,7 @@ export function UploadZone({
                 >
                   {PHASES.map((p) => (
                     <option key={p} value={p}>
-                      {PHASE_LABEL[p]}
+                      {ZONE_TITLE[p]}
                     </option>
                   ))}
                 </select>

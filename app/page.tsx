@@ -10,7 +10,7 @@ import { initialState, uploadFiles } from "@/components/wizard/types";
 import { Field, GhostButton, PrimaryButton, Spinner, ErrorNote, inputCls } from "@/components/wizard/ui";
 import type { MovePayload } from "@/components/wizard/UploadZone";
 import { UploadZone } from "@/components/wizard/UploadZone";
-import { CompiledPreview, TemplateGallery } from "@/components/wizard/TemplateGallery";
+import { TemplateGallery } from "@/components/wizard/TemplateGallery";
 import type { CompanyProfileView } from "@/components/wizard/CompanyPicker";
 import { CompanyPicker } from "@/components/wizard/CompanyPicker";
 import { usePersistent } from "@/components/wizard/usePersistent";
@@ -55,6 +55,7 @@ function buildPayload(state: WizardState, profileId: string, templateId: Templat
       before: state.photos.before.map(toMeta),
       during: state.photos.during.map(toMeta),
       after: state.photos.after.map(toMeta),
+      general: state.photos.general.map(toMeta),
     },
   };
 }
@@ -216,8 +217,8 @@ export default function Home() {
               photoLayout === "rows"
                 ? "flex flex-col gap-4"
                 : photoLayout === "columns"
-                  ? "grid grid-cols-1 gap-3 min-[520px]:grid-cols-3"
-                  : "flex flex-col gap-4 lg:grid lg:grid-cols-3"
+                  ? "grid grid-cols-2 gap-3 lg:grid-cols-4"
+                  : "flex flex-col gap-4 lg:grid lg:grid-cols-2 xl:grid-cols-4"
             }
           >
             {PHASES.map((phase) => (
@@ -526,9 +527,6 @@ function StepGenerate({
   profile: CompanyProfileView | null;
 }) {
   const profileId = profile?.id ?? "focused-fm";
-  const [previewTemplate, setPreviewTemplate] = useState<TemplateId>(
-    state.templateIds[0] ?? "focused-photo",
-  );
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -596,10 +594,8 @@ function StepGenerate({
               <dd className="mt-0.5 font-mono text-[13px] text-text">{state.date}</dd>
             </div>
             <div>
-              <dt className="text-text-muted">Photos (B · D · A)</dt>
-              <dd className="mt-0.5 font-mono text-[13px] text-text">
-                {counts[0]} · {counts[1]} · {counts[2]}
-              </dd>
+              <dt className="text-text-muted">Photos (B · D · A · No tag)</dt>
+              <dd className="mt-0.5 font-mono text-[13px] text-text">{counts.join(" · ")}</dd>
             </div>
           </dl>
 
@@ -712,46 +708,6 @@ function StepGenerate({
             </div>
           )}
         </div>
-      </div>
-
-      {/* Final compiled report preview for the selected template(s) */}
-      <div className="mt-6 rounded-[16px] border border-hairline bg-bg-subtle p-4 sm:p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-display text-[16px] font-semibold text-text">Final report preview</h3>
-            <p className="mt-0.5 text-[13px] text-text-muted">
-              Compiled with your photos, remarks and pairing — exactly what the PDF will contain.
-            </p>
-          </div>
-          {state.templateIds.length > 1 && (
-            <div className="flex flex-wrap gap-1 rounded-[12px] border border-border bg-bg p-1">
-              {state.templateIds.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setPreviewTemplate(id)}
-                  aria-pressed={previewTemplate === id}
-                  className={`min-h-10 rounded-[9px] px-3.5 text-[13.5px] font-medium transition-colors ${
-                    previewTemplate === id
-                      ? "bg-accent text-accent-contrast"
-                      : "text-text-muted hover:bg-bg-hover"
-                  }`}
-                >
-                  {TEMPLATES.find((t) => t.id === id)?.name.replace("Focused — ", "") ?? id}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <CompiledPreview
-          state={state}
-          profile={profile}
-          templateId={
-            state.templateIds.includes(previewTemplate)
-              ? previewTemplate
-              : (state.templateIds[0] ?? "focused-photo")
-          }
-        />
       </div>
 
       <div className="mt-8 flex items-center justify-between border-t border-hairline pt-5">

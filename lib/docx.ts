@@ -75,10 +75,14 @@ function fitImage(p: PhotoMeta, maxW = CONTENT_WIDTH_PX, maxH = MAX_IMG_HEIGHT_P
 function photoBlock(photo: LoadedPhoto, phase: Phase, maxW?: number): Paragraph[] {
   const { width, height } = fitImage(photo, maxW);
   return [
-    new Paragraph({
-      spacing: { before: 240, after: 60 },
-      children: [mono(PHASE_LABEL[phase], 13)],
-    }),
+    ...(PHASE_LABEL[phase]
+      ? [
+          new Paragraph({
+            spacing: { before: 240, after: 60 },
+            children: [mono(PHASE_LABEL[phase], 13)],
+          }),
+        ]
+      : [new Paragraph({ spacing: { before: 240 }, children: [] })]),
     new Paragraph({
       children: [
         new ImageRun({ type: "jpg", data: photo.data, transformation: { width, height } }),
@@ -110,7 +114,7 @@ function comparisonRow(before: LoadedPhoto, after: LoadedPhoto): TableRow {
 
 export async function renderDocx(report: ReportData): Promise<Buffer> {
   // Load all assets up front.
-  const photos: Record<Phase, LoadedPhoto[]> = { before: [], during: [], after: [] };
+  const photos: Record<Phase, LoadedPhoto[]> = { before: [], during: [], after: [], general: [] };
   for (const phase of PHASES) {
     for (const p of report.photos[phase]) {
       const loaded = await loadPhoto(p);
@@ -317,11 +321,14 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
       sectionHeading("02", PHASE_TITLE.during, photos.during.length);
       for (const p of photos.during) body.push(...photoBlock(p, "during"));
     }
+    for (const p of photos.general) body.push(...photoBlock(p, "general"));
   } else {
-    const idx: Record<Phase, string> = { before: "01", during: "02", after: "03" };
+    const idx: Record<Phase, string> = { before: "01", during: "02", after: "03", general: "04" };
     for (const phase of PHASES) {
       if (!photos[phase].length) continue;
-      sectionHeading(idx[phase], PHASE_TITLE[phase], photos[phase].length, firstBlock);
+      if (PHASE_TITLE[phase]) {
+        sectionHeading(idx[phase], PHASE_TITLE[phase], photos[phase].length, firstBlock);
+      }
       firstBlock = false;
       for (const p of photos[phase]) body.push(...photoBlock(p, phase));
     }

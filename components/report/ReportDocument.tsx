@@ -18,7 +18,7 @@ const CONTENT_W = 178;
 const CONTENT_H = 240;
 const GAP = 6;
 
-const SECTION_INDEX: Record<Phase, string> = { before: "01", during: "02", after: "03" };
+const SECTION_INDEX: Record<Phase, string> = { before: "01", during: "02", after: "03", general: "04" };
 
 const isPortrait = (p: PhotoView) => p.height >= p.width;
 
@@ -268,7 +268,7 @@ export function DocumentLastPage({ r }: { r: ReportView }) {
   return <BackPage r={r} dark={getTemplate(r.templateId).dark} />;
 }
 
-const FOCUSED_IDX: Record<Phase, string> = { before: "01", during: "02", after: "03" };
+const FOCUSED_IDX: Record<Phase, string> = { before: "01", during: "02", after: "03", general: "04" };
 
 /** The client's own family: one large photo per page, heading inline on the
  *  first page of each section, Thank-you last page. */
@@ -302,12 +302,23 @@ function buildFocusedPages(r: ReportView): React.ReactNode[] {
         </FocusedPage>,
       );
     });
+    r.photos.general.forEach((photo, i) => {
+      pages.push(
+        <FocusedPage key={`general-${i}`} r={r}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
+            <FocusedPhotoBlock photo={photo} phase="general" boxH={200} />
+          </div>
+        </FocusedPage>,
+      );
+    });
   } else {
     for (const phase of PHASES) {
       r.photos[phase].forEach((photo, i) => {
         pages.push(
           <FocusedPage key={`${phase}-${i}`} r={r}>
-            {i === 0 && <FocusedHeading index={FOCUSED_IDX[phase]} title={PHASE_TITLE[phase]} />}
+            {i === 0 && PHASE_TITLE[phase] !== "" && (
+              <FocusedHeading index={FOCUSED_IDX[phase]} title={PHASE_TITLE[phase]} />
+            )}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
               <FocusedPhotoBlock photo={photo} phase={phase} boxH={i === 0 ? 185 : 200} />
             </div>
@@ -381,17 +392,19 @@ function buildStandardPages(r: ReportView): React.ReactNode[] {
 
   const addSection = (phase: Phase, heading: string, index: string, photos: PhotoView[]) => {
     if (photos.length === 0) return;
-    pageNo += 1;
-    pages.push(
-      <Divider
-        key={`div-${phase}-${index}`}
-        dark={dark}
-        index={index}
-        heading={heading}
-        count={photos.length}
-        building={r.building}
-      />,
-    );
+    if (heading) {
+      pageNo += 1;
+      pages.push(
+        <Divider
+          key={`div-${phase}-${index}`}
+          dark={dark}
+          index={index}
+          heading={heading}
+          count={photos.length}
+          building={r.building}
+        />,
+      );
+    }
     paginate(photos).forEach((spread, i) =>
       chrome(`${phase}-${index}-${i}`, <SpreadBlock spread={spread} phase={phase} />),
     );
@@ -432,6 +445,7 @@ function buildStandardPages(r: ReportView): React.ReactNode[] {
       );
     }
     addSection("during", PHASE_TITLE.during, "02", r.photos.during);
+    addSection("general", "", "04", r.photos.general);
   } else {
     for (const phase of PHASES) {
       addSection(phase, PHASE_TITLE[phase], SECTION_INDEX[phase], r.photos[phase]);

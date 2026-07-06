@@ -1,17 +1,21 @@
-export type Phase = "before" | "during" | "after";
+export type Phase = "before" | "during" | "after" | "general";
 
-export const PHASES: Phase[] = ["before", "during", "after"];
+export const PHASES: Phase[] = ["before", "during", "after", "general"];
 
+/** Empty label = untagged: photos carry no pill/chip in the document. */
 export const PHASE_LABEL: Record<Phase, string> = {
   before: "BEFORE",
   during: "DURING WORK",
   after: "AFTER",
+  general: "",
 };
 
+/** Empty title = no section heading/divider page for these photos. */
 export const PHASE_TITLE: Record<Phase, string> = {
   before: "Before",
   during: "During works",
   after: "After",
+  general: "",
 };
 
 export type TemplateId =

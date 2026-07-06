@@ -1,4 +1,4 @@
-import type { Phase, PhotoMeta, ReportData, TemplateId } from "./types";
+import type { CompanyInfo, Phase, PhotoMeta, ReportData, TemplateId } from "./types";
 
 export interface PhotoView extends PhotoMeta {
   url: string;
@@ -8,6 +8,9 @@ export interface ReportView {
   reportNo?: string;
   title: string;
   building: string;
+  level?: string;
+  area?: string;
+  company?: CompanyInfo;
   date: string;
   preparedBy?: string;
   scope?: string;
@@ -18,6 +21,13 @@ export interface ReportView {
   logo?: PhotoView | null;
   photos: Record<Phase, PhotoView[]>;
 }
+
+export const assetUrl = (id: string): string =>
+  id.startsWith("sample:")
+    ? `/samples/${id.slice(7)}`
+    : id.startsWith("builtin:")
+      ? `/brand/${id.slice(8)}.png`
+      : `/api/images/${id}`;
 
 export const toView = (r: ReportData, url: (id: string) => string): ReportView => ({
   ...r,
@@ -39,18 +49,28 @@ const sm = (name: string, width: number, height: number, caption?: string): Phot
 });
 
 /** Sample report used by the template picker previews and /preview routes. */
-export const sampleReport = (templateId: TemplateId = "hero-dark"): ReportView => ({
+export const FOCUSED_LOGO: PhotoMeta & { url: string } = {
+  id: "builtin:focused-fm",
+  url: "/brand/focused-fm.png",
+  width: 72,
+  height: 47,
+};
+
+export const sampleReport = (templateId: TemplateId = "focused-photo"): ReportView => ({
   reportNo: "2026-0001",
-  title: "External Facade & Communal Areas Deep Clean",
-  building: "Riverside House, 12 Embankment Way",
+  title: "Floor Scrubbing & Pressure Wash",
+  building: "Aurora Melbourne Central",
+  level: "B1",
+  area: "Corridor",
+  company: { name: "Focused Facilities Management", accent: "#D9232E" },
   date: new Date().toISOString().slice(0, 10),
-  preparedBy: "J. Whitfield",
+  preparedBy: "Nikki",
   scope:
     "Full soft-wash of the front and rear elevations including render, cladding and glazing frames; degrease and pressure-clean of loading bay and bin store; machine scrub and re-seal of lobby and stair-core hard floors; high-level dusting of communal ceilings, vents and light fittings. All works completed to the agreed specification with photographic evidence collected before, during and after each stage.",
   templateId,
   paired: false,
   buildingPhoto: sm("building.jpg", 2400, 1600),
-  logo: sm("logo.svg", 320, 88),
+  logo: FOCUSED_LOGO,
   photos: {
     before: [
       sm("before-1.jpg", 1600, 1067, "Render staining, front elevation"),

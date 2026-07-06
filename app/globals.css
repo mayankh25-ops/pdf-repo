@@ -72,9 +72,15 @@
   --text-muted: var(--sand-11);
   --text: var(--sand-12);
 
-  /* Single swappable accent (design/tokens.md §1.4). No invented palette. */
+  /* Single swappable accent (design/tokens.md §1.4). The Focused family
+     overrides this per company profile at render time. */
   --accent: var(--sand-12);
   --accent-contrast: var(--sand-1);
+
+  /* Phase tag colours, matched to the client's reference reports */
+  --tag-before: #d9232e;
+  --tag-during: #e8a020;
+  --tag-after: #1e9e57;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -122,43 +128,6 @@ html {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-}
-
-/* ---------------------------------------------------------------------------
-   Home themes — five looks for the app shell, picked by the user and stored
-   per device. Colours are drawn from the client's reference covers. They set
-   only the UI accent + a backdrop; report documents are unaffected.
---------------------------------------------------------------------------- */
-.home-wave {
-  --ui-accent: #4d68f9;
-  --ui-accent-contrast: #ffffff;
-}
-.home-ocean {
-  --ui-accent: #e8722c;
-  --ui-accent-contrast: #ffffff;
-}
-.home-field {
-  --ui-accent: #47663c;
-  --ui-accent-contrast: #ffffff;
-}
-.home-photo {
-  --ui-accent: #ffffff;
-  --ui-accent-contrast: #16150f;
-}
-/* Slight translucency for cards on decorated backdrops */
-.home-wave .theme-card,
-.home-ocean .theme-card,
-.home-photo .theme-card {
-  background: color-mix(in srgb, var(--bg-subtle) 82%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.home-field .theme-card {
-  background: color-mix(in srgb, #ffffff 72%, transparent);
-}
-
-::selection {
-  background: var(--sand-5);
 }
 
 /* Restrained motion — step transitions only (design/tokens.md §5) */

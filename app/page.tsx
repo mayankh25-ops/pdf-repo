@@ -10,8 +10,8 @@ import { Field, GhostButton, PrimaryButton, Spinner, ErrorNote, inputCls } from 
 import type { MovePayload } from "@/components/wizard/UploadZone";
 import { UploadZone } from "@/components/wizard/UploadZone";
 import { TemplatePicker } from "@/components/wizard/TemplatePicker";
-import type { HomeThemeId } from "@/components/wizard/themes";
-import { HomeBackdrop, ThemePicker, getHomeTheme } from "@/components/wizard/themes";
+import type { CompanyProfileView } from "@/components/wizard/CompanyPicker";
+import { CompanyPicker } from "@/components/wizard/CompanyPicker";
 import { usePersistent } from "@/components/wizard/usePersistent";
 
 const STEPS = ["Details", "Template", "Photos", "Generate"] as const;
@@ -26,12 +26,24 @@ type PhotoLayout = "auto" | "columns" | "rows";
 
 export default function Home() {
   const [state, setState] = useState<WizardState>(initialState);
-  const [themeRaw, setThemeRaw] = usePersistent("cwr-home-theme", "classic");
   const [layoutRaw, setLayoutRaw] = usePersistent("cwr-photo-layout", "auto");
+  const [profileId, setProfileId] = usePersistent("cwr-profile", "focused-fm");
+  const [profiles, setProfiles] = useState<CompanyProfileView[]>([]);
 
-  const themeDef = getHomeTheme(themeRaw);
-  const theme = themeDef.id;
-  const setTheme = (id: HomeThemeId) => setThemeRaw(id);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/profiles")
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled && Array.isArray(json.profiles)) setProfiles(json.profiles);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const profile = profiles.find((p) => p.id === profileId) ?? profiles[0] ?? null;
   const photoLayout: PhotoLayout =
     layoutRaw === "columns" || layoutRaw === "rows" ? layoutRaw : "auto";
   const setPhotoLayout = (v: PhotoLayout) => setLayoutRaw(v);
@@ -64,12 +76,7 @@ export default function Home() {
   };
 
   return (
-    <div
-      className={`${themeDef.dark ? "dark " : ""}${themeDef.className} relative flex min-h-dvh flex-col text-text ${
-        theme === "classic" ? "bg-bg" : ""
-      }`}
-    >
-      <HomeBackdrop theme={theme} />
+    <div className="relative flex min-h-dvh flex-col bg-bg text-text">
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
@@ -89,7 +96,15 @@ export default function Home() {
       </header>
 
       <div className="mb-6">
-        <ThemePicker value={theme} onChange={setTheme} />
+        <CompanyPicker
+          profiles={profiles}
+          selectedId={profile?.id ?? "focused-fm"}
+          onSelect={setProfileId}
+          onCreated={(created) => {
+            setProfiles((list) => [...list, created]);
+            setProfileId(created.id);
+          }}
+        />
       </div>
 
       {/* Step indicator */}
@@ -127,7 +142,7 @@ export default function Home() {
             title="Choose a template"
             sub="The template drives the whole document — cover, section dividers and page chrome. Previews update live with your details."
           />
-          <TemplatePicker state={state} onSelect={(id) => set("templateId", id)} />
+          <TemplatePicker state={state} profile={profile} onSelect={(id) => set("templateId", id)} />
           <StepFooter onBack={() => go(1)} onNext={() => go(3)} />
         </div>
       )}
@@ -189,7 +204,13 @@ export default function Home() {
         </div>
       )}
       {state.step === 4 && (
-        <StepGenerate state={state} set={set} onBack={() => go(3)} canGenerate={canGenerate} />
+        <StepGenerate
+          state={state}
+          set={set}
+          onBack={() => go(3)}
+          canGenerate={canGenerate}
+          profileId={profile?.id ?? "focused-fm"}
+        />
       )}
       </main>
     </div>
@@ -332,7 +353,7 @@ function StepDetails({
         sub="These appear on the cover and in the running header and footer of every page."
       />
       <form
-        className="theme-card max-w-2xl rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7"
+        className="max-w-2xl rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7"
         onSubmit={(e) => {
           e.preventDefault();
           if (canNext) onNext();
@@ -364,9 +385,27 @@ function StepDetails({
           <Field label="Report date">
             <input
               type="date"
-              className={`${inputCls} font-mono text-[13.5px]`}
+              className={`${inputCls} font-mono`}
               value={state.date}
               onChange={(e) => set("date", e.target.value)}
+            />
+          </Field>
+          <Field label="Level / floor" optional>
+            <input
+              className={inputCls}
+              value={state.level}
+              maxLength={40}
+              placeholder="e.g. B1"
+              onChange={(e) => set("level", e.target.value)}
+            />
+          </Field>
+          <Field label="Area" optional>
+            <input
+              className={inputCls}
+              value={state.area}
+              maxLength={80}
+              placeholder="e.g. Corridor"
+              onChange={(e) => set("area", e.target.value)}
             />
           </Field>
           <SingleUpload
@@ -376,14 +415,6 @@ function StepDetails({
             accept="image/jpeg,image/png,image/webp"
             value={state.buildingPhoto}
             onChange={(v) => set("buildingPhoto", v)}
-          />
-          <SingleUpload
-            label="Company logo"
-            optionalNote="SVG or PNG. Appears on the cover and page headers."
-            kind="logo"
-            accept="image/svg+xml,image/png,image/jpeg,image/webp"
-            value={state.logo}
-            onChange={(v) => set("logo", v)}
           />
           <Field label="Prepared by" optional>
             <input
@@ -433,11 +464,13 @@ function StepGenerate({
   set,
   onBack,
   canGenerate,
+  profileId,
 }: {
   state: WizardState;
   set: <K extends keyof WizardState>(k: K, v: WizardState[K]) => void;
   onBack: () => void;
   canGenerate: boolean;
+  profileId: string;
 }) {
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState(0);
@@ -476,13 +509,15 @@ function StepGenerate({
           title: state.title,
           building: state.building,
           date: state.date,
+          level: state.level || undefined,
+          area: state.area || undefined,
           preparedBy: state.preparedBy || undefined,
           scope: state.scope || undefined,
           remarks: state.remarks || undefined,
+          profileId,
           templateId: state.templateId,
           paired: state.paired && pairable,
           buildingPhoto: state.buildingPhoto ? toMeta(state.buildingPhoto) : null,
-          logo: state.logo ? toMeta(state.logo) : null,
           photos: {
             before: state.photos.before.map(toMeta),
             during: state.photos.during.map(toMeta),
@@ -514,7 +549,7 @@ function StepGenerate({
       />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="theme-card rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7">
+        <div className="rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[14px] sm:grid-cols-3">
             <div>
               <dt className="text-text-muted">Building</dt>
@@ -583,7 +618,7 @@ function StepGenerate({
         </div>
 
         {/* Results */}
-        <div className="theme-card rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-6">
+        <div className="rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-6">
           {result ? (
             <div className="step-enter flex flex-col gap-3">
               <p className="font-mono text-[11px] font-medium tracking-[0.12em] text-text-muted">

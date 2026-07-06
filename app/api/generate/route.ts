@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Phase, ReportData, TemplateId } from "@/lib/types";
 import { renderPdf } from "@/lib/pdf";
 import { renderDocx } from "@/lib/docx";
-import { nextReportNo, registerReport, saveJob, saveOutput } from "@/lib/store";
+import { getProfile, nextReportNo, registerReport, saveJob, saveOutput } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const TEMPLATE_IDS: TemplateId[] = [
+  "focused-photo",
+  "focused-card",
+  "focused-scrim",
   "hero-dark",
   "hero-light",
   "minimal-light",
@@ -56,12 +59,14 @@ function sanitize(input: unknown): ReportData | null {
     date: /^\d{4}-\d{2}-\d{2}$/.test(String(raw.date))
       ? String(raw.date)
       : new Date().toISOString().slice(0, 10),
+    level: str(raw.level, 40) || undefined,
+    area: str(raw.area, 80) || undefined,
     preparedBy: str(raw.preparedBy, 100) || undefined,
     scope: str(raw.scope, 4000) || undefined,
     remarks: str(raw.remarks, 4000) || undefined,
     templateId: TEMPLATE_IDS.includes(raw.templateId as TemplateId)
       ? (raw.templateId as TemplateId)
-      : "hero-dark",
+      : "focused-photo",
     paired: raw.paired === true,
     buildingPhoto: photoList([raw.buildingPhoto])[0] ?? null,
     logo: photoList([raw.logo])[0] ?? null,
@@ -89,12 +94,26 @@ const slug = (s: string) =>
 
 export async function POST(req: NextRequest) {
   try {
-    const report = sanitize(await req.json());
+    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+    const report = sanitize(body);
     if (!report) {
       return NextResponse.json(
         { error: "Report needs a title, a building name and at least one photo." },
         { status: 400 },
       );
+    }
+
+    // Resolve the selected company profile: brand name, accent and logo.
+    const profile =
+      (typeof body?.profileId === "string" ? await getProfile(body.profileId) : null) ??
+      (await getProfile("focused-fm"));
+    if (profile) {
+      report.company = { name: profile.name, accent: profile.accent };
+      report.logo = {
+        id: profile.logoId,
+        width: profile.logoWidth,
+        height: profile.logoHeight,
+      };
     }
 
     report.reportNo = await nextReportNo();

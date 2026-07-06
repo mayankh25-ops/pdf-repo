@@ -17,6 +17,7 @@ export const DIRS = {
   jobs: path.join(ROOT, "jobs"),
   out: path.join(ROOT, "out"),
   reports: path.join(ROOT, "reports"),
+  profiles: path.join(ROOT, "profiles"),
 };
 for (const dir of Object.values(DIRS)) mkdirSync(dir, { recursive: true });
 
@@ -137,8 +138,11 @@ export async function cleanupExpired() {
       }
     }
     const stale = Date.now() - 2 * DOWNLOAD_TTL_MS;
+    // Profile logos live in uploads but must never be swept.
+    const keep = new Set((await listProfiles()).map((p) => p.logoId));
     for (const dir of [DIRS.uploads, DIRS.jobs]) {
       for (const file of await readdir(dir)) {
+        if (keep.has(file.replace(/\.[^.]+$/, ""))) continue;
         const p = path.join(dir, file);
         try {
           if ((await stat(p)).mtimeMs < stale) await rm(p, { force: true });
@@ -158,6 +162,67 @@ export function uploadPath(rec: UploadRecord) {
 
 export function existsUploadDir() {
   return existsSync(DIRS.uploads);
+}
+
+/* ---------------------------------------------------------------------------
+   Company profiles — brand name + logo + accent, selectable on the home page.
+   The Focused Facilities Management profile ships built in.
+--------------------------------------------------------------------------- */
+
+export interface CompanyProfile {
+  id: string;
+  name: string;
+  accent: string;
+  /** upload id of the logo, or a `builtin:` id served from /brand */
+  logoId: string;
+  logoWidth: number;
+  logoHeight: number;
+  createdAt: string;
+}
+
+export const DEFAULT_PROFILE: CompanyProfile = {
+  id: "focused-fm",
+  name: "Focused Facilities Management",
+  accent: "#D9232E",
+  logoId: "builtin:focused-fm",
+  logoWidth: 72,
+  logoHeight: 47,
+  createdAt: "2026-01-01T00:00:00.000Z",
+};
+
+export async function listProfiles(): Promise<CompanyProfile[]> {
+  const profiles: CompanyProfile[] = [DEFAULT_PROFILE];
+  try {
+    for (const file of await readdir(DIRS.profiles)) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        profiles.push(JSON.parse(await readFile(path.join(DIRS.profiles, file), "utf8")));
+      } catch {
+        /* skip malformed */
+      }
+    }
+  } catch {
+    /* dir missing */
+  }
+  return profiles.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+}
+
+export async function saveProfile(
+  profile: Omit<CompanyProfile, "id" | "createdAt">,
+): Promise<CompanyProfile> {
+  const record: CompanyProfile = { ...profile, id: id(), createdAt: new Date().toISOString() };
+  await writeFile(path.join(DIRS.profiles, `${record.id}.json`), JSON.stringify(record));
+  return record;
+}
+
+export async function getProfile(profileId: string): Promise<CompanyProfile | null> {
+  if (profileId === DEFAULT_PROFILE.id) return DEFAULT_PROFILE;
+  if (!safe(profileId)) return null;
+  try {
+    return JSON.parse(await readFile(path.join(DIRS.profiles, `${profileId}.json`), "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 /* ---------------------------------------------------------------------------

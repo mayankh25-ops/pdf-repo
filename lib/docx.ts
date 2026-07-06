@@ -16,6 +16,8 @@ import {
   convertMillimetersToTwip,
 } from "docx";
 import sharp from "sharp";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import type { Phase } from "./types";
 import { PHASES, PHASE_LABEL, PHASE_TITLE } from "./types";
 import type { PhotoMeta, ReportData } from "./types";
@@ -118,7 +120,20 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
 
   let logoPng: Buffer | null = null;
   let logoDims = { width: 120, height: 33 };
-  if (report.logo) {
+  if (report.logo?.id.startsWith("builtin:")) {
+    try {
+      logoPng = await readFile(
+        path.join(process.cwd(), "public", "brand", `${report.logo.id.slice(8)}.png`),
+      );
+      const scale = Math.min(120 / report.logo.width, 40 / report.logo.height, 2);
+      logoDims = {
+        width: Math.round(report.logo.width * scale),
+        height: Math.round(report.logo.height * scale),
+      };
+    } catch {
+      logoPng = null;
+    }
+  } else if (report.logo) {
     const found = await readUpload(report.logo.id);
     if (found) {
       // Word can't be trusted with SVG everywhere — rasterise to PNG.
@@ -180,11 +195,26 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
       ],
     }),
     new Paragraph({
-      spacing: { after: 2000 },
+      spacing: { after: report.level || report.area ? 200 : 2000 },
       children: [
         new TextRun({ text: report.building, font: BODY, size: 28, color: TOKENS.muted }),
       ],
     }),
+    ...(report.level || report.area
+      ? [
+          new Paragraph({
+            spacing: { after: 1800 },
+            children: [
+              new TextRun({
+                text: [report.level, report.area].filter(Boolean).join(" · "),
+                font: BODY,
+                size: 22,
+                color: TOKENS.muted,
+              }),
+            ],
+          }),
+        ]
+      : []),
   ];
   if (buildingPhoto) {
     coverChildren.push(
@@ -317,6 +347,17 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
       }),
     );
   }
+  if (report.templateId.startsWith("focused")) {
+    body.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 },
+        children: [
+          new TextRun({ text: "Thank you.", font: DISPLAY, size: 44, bold: true, color: TOKENS.text }),
+        ],
+      }),
+    );
+  }
   body.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -364,10 +405,10 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
                 },
                 tabStops: [{ type: "right", position: convertMillimetersToTwip(178) }],
                 children: [
-                  mono(report.building.toUpperCase(), 13),
+                  mono((report.company?.name ?? report.building).toUpperCase(), 13),
                   new TextRun({ text: "\t", font: MONO, size: 13 }),
                   mono(
-                    `${report.reportNo ? `Nº ${report.reportNo} · ` : ""}${fmtDate(report.date)} · `,
+                    `${report.reportNo ? `Nº ${report.reportNo} · ` : ""}WORKS COMPLETED · ${fmtDate(report.date)} · `,
                     13,
                   ),
                   new TextRun({

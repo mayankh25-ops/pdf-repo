@@ -15,6 +15,9 @@ export const PHASE_TITLE: Record<Phase, string> = {
 };
 
 export type TemplateId =
+  | "focused-photo"
+  | "focused-card"
+  | "focused-scrim"
   | "hero-dark"
   | "hero-light"
   | "minimal-light"
@@ -33,11 +36,22 @@ export interface PhotoMeta {
   caption?: string;
 }
 
+export interface CompanyInfo {
+  name: string;
+  /** brand accent used by the document templates (e.g. Focused red) */
+  accent?: string;
+}
+
 export interface ReportData {
   /** Portal-assigned report number, e.g. "2026-0014" (set at generate time) */
   reportNo?: string;
   title: string;
   building: string;
+  /** optional level/floor, e.g. "B1" */
+  level?: string;
+  /** optional area, e.g. "Corridor" */
+  area?: string;
+  company?: CompanyInfo;
   /** ISO date string (yyyy-mm-dd) */
   date: string;
   preparedBy?: string;

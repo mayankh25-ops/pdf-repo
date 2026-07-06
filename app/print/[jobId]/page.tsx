@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { readJob } from "@/lib/store";
-import { toView } from "@/lib/sample";
+import { assetUrl, toView } from "@/lib/sample";
 import { ReportDocument } from "@/components/report/ReportDocument";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +14,6 @@ export default async function PrintPage({ params }: { params: Promise<{ jobId: s
   const { jobId } = await params;
   const report = await readJob(jobId);
   if (!report) notFound();
-  const view = toView(report, (id) =>
-    id.startsWith("sample:") ? `/samples/${id.slice(7)}` : `/api/images/${id}`,
-  );
+  const view = toView(report, assetUrl);
   return <ReportDocument r={view} />;
 }

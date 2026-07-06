@@ -82,7 +82,7 @@ export function UploadZone({
 
   return (
     <section
-      className={`theme-card flex flex-col rounded-[16px] border bg-bg-subtle p-4 transition-colors ${
+      className={`flex flex-col rounded-[16px] border bg-bg-subtle p-4 transition-colors ${
         dragOver ? "border-border-strong" : "border-hairline"
       }`}
       onDragOver={(e) => {

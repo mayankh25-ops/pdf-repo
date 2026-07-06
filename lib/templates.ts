@@ -8,9 +8,36 @@ export interface TemplateDef {
   dark: boolean;
   /** Whether the cover needs the building photo to look right */
   usesPhoto: boolean;
+  /** "focused" = the client's own report family (light chrome on every page,
+   *  one large photo per page, Thank-you last page) */
+  family?: "focused";
 }
 
 export const TEMPLATES: TemplateDef[] = [
+  {
+    id: "focused-photo",
+    name: "Focused — Photo cover",
+    blurb: "Full photo card, building pill and white title over the image, meta bar at the base.",
+    dark: false,
+    usesPhoto: true,
+    family: "focused",
+  },
+  {
+    id: "focused-card",
+    name: "Focused — Spec card",
+    blurb: "Photo card with an overlapping white spec card carrying title and meta columns.",
+    dark: false,
+    usesPhoto: true,
+    family: "focused",
+  },
+  {
+    id: "focused-scrim",
+    name: "Focused — Dark scrim",
+    blurb: "Photo card under a dark scrim, brand kicker and white meta columns.",
+    dark: false,
+    usesPhoto: true,
+    family: "focused",
+  },
   {
     id: "hero-dark",
     name: "Image Hero — Dark scrim",

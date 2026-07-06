@@ -15,10 +15,11 @@ export interface WizardState {
   building: string;
   date: string;
   preparedBy: string;
+  level: string;
+  area: string;
   scope: string;
   remarks: string;
   buildingPhoto: UploadedImage | null;
-  logo: UploadedImage | null;
   templateId: TemplateId;
   photos: Record<Phase, UploadedImage[]>;
   paired: boolean;
@@ -30,11 +31,12 @@ export const initialState = (): WizardState => ({
   building: "",
   date: new Date().toISOString().slice(0, 10),
   preparedBy: "",
+  level: "",
+  area: "",
   scope: "",
   remarks: "",
   buildingPhoto: null,
-  logo: null,
-  templateId: "hero-dark",
+  templateId: "focused-photo",
   photos: { before: [], during: [], after: [] },
   paired: false,
 });

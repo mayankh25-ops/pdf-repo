@@ -4,6 +4,14 @@ import { getTemplate } from "@/lib/templates";
 import type { PhotoView, ReportView } from "@/lib/sample";
 import { ChromePage, Logo, PhotoCell, fmtDate } from "./primitives";
 import { Cover } from "./covers";
+import {
+  FocusedCover,
+  FocusedHeading,
+  FocusedPage,
+  FocusedPhotoBlock,
+  FocusedScope,
+  FocusedThankYou,
+} from "./focused";
 
 /* Content column inside a ChromePage: 210−32 wide, ~240mm usable height. */
 const CONTENT_W = 178;
@@ -254,11 +262,81 @@ function BackPage({ r, dark }: { r: ReportView; dark: boolean }) {
   );
 }
 
+/** The document's final page — used directly by the template picker preview. */
+export function DocumentLastPage({ r }: { r: ReportView }) {
+  if (getTemplate(r.templateId).family === "focused") return <FocusedThankYou r={r} />;
+  return <BackPage r={r} dark={getTemplate(r.templateId).dark} />;
+}
+
+const FOCUSED_IDX: Record<Phase, string> = { before: "01", during: "02", after: "03" };
+
+/** The client's own family: one large photo per page, heading inline on the
+ *  first page of each section, Thank-you last page. */
+function FocusedDocument({ r }: { r: ReportView }) {
+  const pages: React.ReactNode[] = [<FocusedCover key="cover" r={r} />];
+  if (r.scope?.trim()) pages.push(<FocusedScope key="scope" r={r} />);
+
+  const paired =
+    r.paired && r.photos.before.length > 0 && r.photos.before.length === r.photos.after.length;
+
+  if (paired) {
+    r.photos.before.forEach((b, i) => {
+      const a = r.photos.after[i];
+      pages.push(
+        <FocusedPage key={`pair-${i}`} r={r}>
+          {i === 0 && <FocusedHeading index="01" title="Before & after" />}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-evenly", minHeight: 0 }}>
+            <FocusedPhotoBlock photo={b} phase="before" boxH={i === 0 ? 86 : 92} />
+            <FocusedPhotoBlock photo={a} phase="after" boxH={i === 0 ? 86 : 92} />
+          </div>
+        </FocusedPage>,
+      );
+    });
+    r.photos.during.forEach((photo, i) => {
+      pages.push(
+        <FocusedPage key={`during-${i}`} r={r}>
+          {i === 0 && <FocusedHeading index="02" title={PHASE_TITLE.during} />}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
+            <FocusedPhotoBlock photo={photo} phase="during" boxH={i === 0 ? 185 : 200} />
+          </div>
+        </FocusedPage>,
+      );
+    });
+  } else {
+    for (const phase of PHASES) {
+      r.photos[phase].forEach((photo, i) => {
+        pages.push(
+          <FocusedPage key={`${phase}-${i}`} r={r}>
+            {i === 0 && <FocusedHeading index={FOCUSED_IDX[phase]} title={PHASE_TITLE[phase]} />}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
+              <FocusedPhotoBlock photo={photo} phase={phase} boxH={i === 0 ? 185 : 200} />
+            </div>
+          </FocusedPage>,
+        );
+      });
+    }
+  }
+
+  pages.push(<FocusedThankYou key="thanks" r={r} />);
+  return <>{pages}</>;
+}
+
 /**
  * The full document. Pagination is explicit: every child of this component is
  * exactly one A4 page, so PDF (print) and on-screen preview agree perfectly.
+ * A company brand accent (from the selected profile) cascades to every page.
  */
 export function ReportDocument({ r }: { r: ReportView }) {
+  const accentStyle = r.company?.accent
+    ? ({ "--accent": r.company.accent, "--accent-contrast": "#ffffff" } as React.CSSProperties)
+    : undefined;
+  if (getTemplate(r.templateId).family === "focused") {
+    return <div style={accentStyle}>{<FocusedDocument r={r} />}</div>;
+  }
+  return <div style={accentStyle}>{<StandardDocument r={r} />}</div>;
+}
+
+function StandardDocument({ r }: { r: ReportView }) {
   const dark = getTemplate(r.templateId).dark;
   const pages: React.ReactNode[] = [];
   let pageNo = 1; // cover is page 1; chrome starts on page 2

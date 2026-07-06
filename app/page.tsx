@@ -10,7 +10,7 @@ import { initialState, uploadFiles } from "@/components/wizard/types";
 import { Field, GhostButton, PrimaryButton, Spinner, ErrorNote, inputCls } from "@/components/wizard/ui";
 import type { MovePayload } from "@/components/wizard/UploadZone";
 import { UploadZone } from "@/components/wizard/UploadZone";
-import { TemplateGallery } from "@/components/wizard/TemplateGallery";
+import { CompiledPreview, TemplateGallery } from "@/components/wizard/TemplateGallery";
 import type { CompanyProfileView } from "@/components/wizard/CompanyPicker";
 import { CompanyPicker } from "@/components/wizard/CompanyPicker";
 import { usePersistent } from "@/components/wizard/usePersistent";
@@ -81,8 +81,6 @@ export default function Home() {
   }, []);
 
   const profile = profiles.find((p) => p.id === profileId) ?? profiles[0] ?? null;
-  const [quickBusy, setQuickBusy] = useState<TemplateId | null>(null);
-  const [quickError, setQuickError] = useState<string | null>(null);
 
   const toggleTemplate = (id: TemplateId) =>
     setState((s) => ({
@@ -92,28 +90,6 @@ export default function Home() {
         : [...s.templateIds, id],
     }));
 
-  /** Generate + download a single template straight from the gallery. */
-  const quickDownload = async (templateId: TemplateId) => {
-    setQuickBusy(templateId);
-    setQuickError(null);
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload(state, profile?.id ?? "focused-fm", templateId)),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Generation failed.");
-      const a = document.createElement("a");
-      a.href = json.pdfUrl;
-      a.download = "";
-      a.click();
-    } catch (e) {
-      setQuickError(e instanceof Error ? e.message : "Generation failed.");
-    } finally {
-      setQuickBusy(null);
-    }
-  };
   const photoLayout: PhotoLayout =
     layoutRaw === "columns" || layoutRaw === "rows" ? layoutRaw : "auto";
   const setPhotoLayout = (v: PhotoLayout) => setLayoutRaw(v);
@@ -266,17 +242,14 @@ export default function Home() {
       {state.step === 3 && (
         <div className="step-enter">
           <StepHeading
-            title="Preview & pick templates"
-            sub="Every preview uses your real photos and details. Tap a template to see all of its pages; tick the ones you want — you can download several."
+            title="Pick templates"
+            sub="First-page previews with your real photos and details. Tap to select — you can pick several and download each on the next step."
           />
           <TemplateGallery
             state={state}
             profile={profile}
             selected={state.templateIds}
             onToggle={toggleTemplate}
-            onQuickDownload={quickDownload}
-            quickBusy={quickBusy}
-            quickError={quickError}
           />
           <StepFooter
             onBack={() => go(2)}
@@ -296,7 +269,7 @@ export default function Home() {
           set={set}
           onBack={() => go(3)}
           canGenerate={canGenerate}
-          profileId={profile?.id ?? "focused-fm"}
+          profile={profile}
         />
       )}
       </main>
@@ -544,14 +517,18 @@ function StepGenerate({
   set,
   onBack,
   canGenerate,
-  profileId,
+  profile,
 }: {
   state: WizardState;
   set: <K extends keyof WizardState>(k: K, v: WizardState[K]) => void;
   onBack: () => void;
   canGenerate: boolean;
-  profileId: string;
+  profile: CompanyProfileView | null;
 }) {
+  const profileId = profile?.id ?? "focused-fm";
+  const [previewTemplate, setPreviewTemplate] = useState<TemplateId>(
+    state.templateIds[0] ?? "focused-photo",
+  );
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -735,6 +712,46 @@ function StepGenerate({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Final compiled report preview for the selected template(s) */}
+      <div className="mt-6 rounded-[16px] border border-hairline bg-bg-subtle p-4 sm:p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-display text-[16px] font-semibold text-text">Final report preview</h3>
+            <p className="mt-0.5 text-[13px] text-text-muted">
+              Compiled with your photos, remarks and pairing — exactly what the PDF will contain.
+            </p>
+          </div>
+          {state.templateIds.length > 1 && (
+            <div className="flex flex-wrap gap-1 rounded-[12px] border border-border bg-bg p-1">
+              {state.templateIds.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPreviewTemplate(id)}
+                  aria-pressed={previewTemplate === id}
+                  className={`min-h-10 rounded-[9px] px-3.5 text-[13.5px] font-medium transition-colors ${
+                    previewTemplate === id
+                      ? "bg-accent text-accent-contrast"
+                      : "text-text-muted hover:bg-bg-hover"
+                  }`}
+                >
+                  {TEMPLATES.find((t) => t.id === id)?.name.replace("Focused — ", "") ?? id}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <CompiledPreview
+          state={state}
+          profile={profile}
+          templateId={
+            state.templateIds.includes(previewTemplate)
+              ? previewTemplate
+              : (state.templateIds[0] ?? "focused-photo")
+          }
+        />
       </div>
 
       <div className="mt-8 flex items-center justify-between border-t border-hairline pt-5">

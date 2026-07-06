@@ -272,7 +272,7 @@ const FOCUSED_IDX: Record<Phase, string> = { before: "01", during: "02", after: 
 
 /** The client's own family: one large photo per page, heading inline on the
  *  first page of each section, Thank-you last page. */
-function FocusedDocument({ r }: { r: ReportView }) {
+function buildFocusedPages(r: ReportView): React.ReactNode[] {
   const pages: React.ReactNode[] = [<FocusedCover key="cover" r={r} />];
   if (r.scope?.trim()) pages.push(<FocusedScope key="scope" r={r} />);
 
@@ -318,25 +318,37 @@ function FocusedDocument({ r }: { r: ReportView }) {
   }
 
   pages.push(<FocusedThankYou key="thanks" r={r} />);
-  return <>{pages}</>;
+  return pages;
+}
+
+/** All pages of the document, in order, as separate nodes. */
+export function buildDocumentPages(r: ReportView): React.ReactNode[] {
+  return getTemplate(r.templateId).family === "focused"
+    ? buildFocusedPages(r)
+    : buildStandardPages(r);
 }
 
 /**
- * The full document. Pagination is explicit: every child of this component is
- * exactly one A4 page, so PDF (print) and on-screen preview agree perfectly.
- * A company brand accent (from the selected profile) cascades to every page.
+ * Cascades the company brand accent (from the selected profile) to any
+ * document page rendered inside. display:contents keeps pages as direct
+ * layout children so print pagination is unaffected.
  */
-export function ReportDocument({ r }: { r: ReportView }) {
+export function DocAccent({ r, children }: { r: ReportView; children: React.ReactNode }) {
   const accentStyle = r.company?.accent
     ? ({ "--accent": r.company.accent, "--accent-contrast": "#ffffff" } as React.CSSProperties)
     : undefined;
-  if (getTemplate(r.templateId).family === "focused") {
-    return <div style={accentStyle}>{<FocusedDocument r={r} />}</div>;
-  }
-  return <div style={accentStyle}>{<StandardDocument r={r} />}</div>;
+  return <div style={{ display: "contents", ...accentStyle }}>{children}</div>;
 }
 
-function StandardDocument({ r }: { r: ReportView }) {
+/**
+ * The full document. Pagination is explicit: every page is exactly one A4
+ * .doc-page, so PDF (print) and on-screen preview agree perfectly.
+ */
+export function ReportDocument({ r }: { r: ReportView }) {
+  return <DocAccent r={r}>{buildDocumentPages(r)}</DocAccent>;
+}
+
+function buildStandardPages(r: ReportView): React.ReactNode[] {
   const dark = getTemplate(r.templateId).dark;
   const pages: React.ReactNode[] = [];
   let pageNo = 1; // cover is page 1; chrome starts on page 2
@@ -428,5 +440,5 @@ function StandardDocument({ r }: { r: ReportView }) {
 
   pages.push(<BackPage key="back" r={r} dark={dark} />);
 
-  return <>{pages}</>;
+  return pages;
 }

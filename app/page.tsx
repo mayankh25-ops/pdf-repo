@@ -2,24 +2,61 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { Phase } from "@/lib/types";
+import type { Phase, TemplateId } from "@/lib/types";
 import { PHASES } from "@/lib/types";
+import { TEMPLATES } from "@/lib/templates";
 import type { UploadedImage, WizardState } from "@/components/wizard/types";
 import { initialState, uploadFiles } from "@/components/wizard/types";
 import { Field, GhostButton, PrimaryButton, Spinner, ErrorNote, inputCls } from "@/components/wizard/ui";
 import type { MovePayload } from "@/components/wizard/UploadZone";
 import { UploadZone } from "@/components/wizard/UploadZone";
-import { TemplatePicker } from "@/components/wizard/TemplatePicker";
+import { TemplateGallery } from "@/components/wizard/TemplateGallery";
 import type { CompanyProfileView } from "@/components/wizard/CompanyPicker";
 import { CompanyPicker } from "@/components/wizard/CompanyPicker";
 import { usePersistent } from "@/components/wizard/usePersistent";
 
-const STEPS = ["Details", "Template", "Photos", "Generate"] as const;
+const STEPS = ["Details", "Photos", "Templates", "Generate"] as const;
 
 interface GenResult {
   reportNo: string;
   pdfUrl: string;
   docxUrl: string;
+}
+
+interface TemplateResult extends GenResult {
+  templateId: TemplateId;
+  templateName: string;
+}
+
+/** Shared request body for /api/generate — one call per template. */
+function buildPayload(state: WizardState, profileId: string, templateId: TemplateId) {
+  const toMeta = (img: UploadedImage) => ({
+    id: img.id,
+    width: img.width,
+    height: img.height,
+    caption: img.caption?.trim() || undefined,
+  });
+  const pairable =
+    state.photos.before.length > 0 && state.photos.before.length === state.photos.after.length;
+  return {
+    title: state.title,
+    building: state.building,
+    date: state.date,
+    level: state.level || undefined,
+    area: state.area || undefined,
+    preparedBy: state.preparedBy || undefined,
+    scope: state.scope || undefined,
+    remarks: state.remarks || undefined,
+    profileId,
+    templateId,
+    paired: state.paired && pairable,
+    buildingPhoto: state.buildingPhoto ? toMeta(state.buildingPhoto) : null,
+    photos: {
+      before: state.photos.before.map(toMeta),
+      during: state.photos.during.map(toMeta),
+      after: state.photos.after.map(toMeta),
+    },
+  };
 }
 
 type PhotoLayout = "auto" | "columns" | "rows";
@@ -44,6 +81,39 @@ export default function Home() {
   }, []);
 
   const profile = profiles.find((p) => p.id === profileId) ?? profiles[0] ?? null;
+  const [quickBusy, setQuickBusy] = useState<TemplateId | null>(null);
+  const [quickError, setQuickError] = useState<string | null>(null);
+
+  const toggleTemplate = (id: TemplateId) =>
+    setState((s) => ({
+      ...s,
+      templateIds: s.templateIds.includes(id)
+        ? s.templateIds.filter((t) => t !== id)
+        : [...s.templateIds, id],
+    }));
+
+  /** Generate + download a single template straight from the gallery. */
+  const quickDownload = async (templateId: TemplateId) => {
+    setQuickBusy(templateId);
+    setQuickError(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload(state, profile?.id ?? "focused-fm", templateId)),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Generation failed.");
+      const a = document.createElement("a");
+      a.href = json.pdfUrl;
+      a.download = "";
+      a.click();
+    } catch (e) {
+      setQuickError(e instanceof Error ? e.message : "Generation failed.");
+    } finally {
+      setQuickBusy(null);
+    }
+  };
   const photoLayout: PhotoLayout =
     layoutRaw === "columns" || layoutRaw === "rows" ? layoutRaw : "auto";
   const setPhotoLayout = (v: PhotoLayout) => setLayoutRaw(v);
@@ -52,7 +122,7 @@ export default function Home() {
 
   const totalPhotos = PHASES.reduce((n, p) => n + state.photos[p].length, 0);
   const canLeaveStep1 = state.title.trim().length > 0 && state.building.trim().length > 0;
-  const canGenerate = canLeaveStep1 && totalPhotos > 0;
+  const canGenerate = canLeaveStep1 && totalPhotos > 0 && state.templateIds.length > 0;
 
   const go = (step: WizardState["step"]) => {
     setState((s) => ({ ...s, step }));
@@ -139,16 +209,6 @@ export default function Home() {
       {state.step === 2 && (
         <div className="step-enter">
           <StepHeading
-            title="Choose a template"
-            sub="The template drives the whole document — cover, section dividers and page chrome. Previews update live with your details."
-          />
-          <TemplatePicker state={state} profile={profile} onSelect={(id) => set("templateId", id)} />
-          <StepFooter onBack={() => go(1)} onNext={() => go(3)} />
-        </div>
-      )}
-      {state.step === 3 && (
-        <div className="step-enter">
-          <StepHeading
             title="Add photo evidence"
             sub="Before and after tell the story; during is optional and simply skipped if empty. Drag photos to reorder, or drag them between sections if one landed in the wrong place."
           />
@@ -196,10 +256,37 @@ export default function Home() {
             ))}
           </div>
           <StepFooter
-            onBack={() => go(2)}
-            onNext={() => go(4)}
+            onBack={() => go(1)}
+            onNext={() => go(3)}
             nextDisabled={totalPhotos === 0}
             nextHint={totalPhotos === 0 ? "Add at least one photo" : undefined}
+          />
+        </div>
+      )}
+      {state.step === 3 && (
+        <div className="step-enter">
+          <StepHeading
+            title="Preview & pick templates"
+            sub="Every preview uses your real photos and details. Tap a template to see all of its pages; tick the ones you want — you can download several."
+          />
+          <TemplateGallery
+            state={state}
+            profile={profile}
+            selected={state.templateIds}
+            onToggle={toggleTemplate}
+            onQuickDownload={quickDownload}
+            quickBusy={quickBusy}
+            quickError={quickError}
+          />
+          <StepFooter
+            onBack={() => go(2)}
+            onNext={() => go(4)}
+            nextDisabled={state.templateIds.length === 0}
+            nextHint={
+              state.templateIds.length === 0
+                ? "Select at least one template"
+                : `${state.templateIds.length} selected`
+            }
           />
         </div>
       )}
@@ -452,13 +539,6 @@ function StepDetails({
 
 /* ------------------------------- step 4 ---------------------------------- */
 
-const GEN_STAGES = [
-  "Laying out pages…",
-  "Rendering print-grade PDF…",
-  "Building Word document…",
-  "Preparing download links…",
-];
-
 function StepGenerate({
   state,
   set,
@@ -473,72 +553,51 @@ function StepGenerate({
   profileId: string;
 }) {
   const [busy, setBusy] = useState(false);
-  const [stage, setStage] = useState(0);
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<GenResult | null>(null);
+  const [results, setResults] = useState<TemplateResult[]>([]);
   // Only read after user interaction (links render post-generate), so no
   // hydration concern.
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-
-  useEffect(() => {
-    if (!busy) return;
-    const t = setInterval(() => setStage((s) => Math.min(s + 1, GEN_STAGES.length - 1)), 2500);
-    return () => clearInterval(t);
-  }, [busy]);
 
   const pairable =
     state.photos.before.length > 0 && state.photos.before.length === state.photos.after.length;
   const counts = PHASES.map((p) => state.photos[p].length);
 
+  /** Generates every selected template sequentially. */
   const generate = async () => {
-    setStage(0);
     setBusy(true);
     setError(null);
-    setResult(null);
+    setResults([]);
+    const done: TemplateResult[] = [];
     try {
-      const toMeta = (img: UploadedImage) => ({
-        id: img.id,
-        width: img.width,
-        height: img.height,
-        caption: img.caption?.trim() || undefined,
-      });
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: state.title,
-          building: state.building,
-          date: state.date,
-          level: state.level || undefined,
-          area: state.area || undefined,
-          preparedBy: state.preparedBy || undefined,
-          scope: state.scope || undefined,
-          remarks: state.remarks || undefined,
-          profileId,
-          templateId: state.templateId,
-          paired: state.paired && pairable,
-          buildingPhoto: state.buildingPhoto ? toMeta(state.buildingPhoto) : null,
-          photos: {
-            before: state.photos.before.map(toMeta),
-            during: state.photos.during.map(toMeta),
-            after: state.photos.after.map(toMeta),
-          },
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Generation failed.");
-      setResult(json);
+      for (let i = 0; i < state.templateIds.length; i++) {
+        const templateId = state.templateIds[i];
+        const name = TEMPLATES.find((t) => t.id === templateId)?.name ?? templateId;
+        setProgress(`Generating ${name} (${i + 1}/${state.templateIds.length})…`);
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildPayload(state, profileId, templateId)),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? `Generation failed for ${name}.`);
+        done.push({ ...json, templateId, templateName: name });
+        setResults([...done]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed.");
     } finally {
       setBusy(false);
+      setProgress("");
     }
   };
 
+  const first = results[0];
   const shareSubject = `${state.building} — ${state.title}, ${state.date}`;
-  const pdfAbsolute = result ? `${origin}${result.pdfUrl}` : "";
-  const shareBody = result
-    ? `Hi,\n\nPlease find the cleaning works report Nº ${result.reportNo} for ${state.building}.\n\nDownload: ${pdfAbsolute}\n\nBest regards${state.preparedBy ? `,\n${state.preparedBy}` : ""}`
+  const pdfAbsolute = first ? `${origin}${first.pdfUrl}` : "";
+  const shareBody = first
+    ? `Hi,\n\nPlease find the cleaning works report Nº ${first.reportNo} for ${state.building}.\n\nDownload: ${pdfAbsolute}\n\nBest regards${state.preparedBy ? `,\n${state.preparedBy}` : ""}`
     : "";
 
   return (
@@ -607,10 +666,10 @@ function StepGenerate({
             <PrimaryButton onClick={generate} disabled={busy || !canGenerate} full>
               {busy ? (
                 <>
-                  <Spinner /> {GEN_STAGES[stage]}
+                  <Spinner /> {progress || "Generating…"}
                 </>
               ) : (
-                "Generate report"
+                `Generate ${state.templateIds.length > 1 ? `${state.templateIds.length} reports` : "report"}`
               )}
             </PrimaryButton>
             <ErrorNote message={error} />
@@ -619,23 +678,29 @@ function StepGenerate({
 
         {/* Results */}
         <div className="rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-6">
-          {result ? (
-            <div className="step-enter flex flex-col gap-3">
-              <p className="font-mono text-[11px] font-medium tracking-[0.12em] text-text-muted">
-                REPORT Nº {result.reportNo}
-              </p>
-              <a
-                href={result.pdfUrl}
-                className="flex items-center justify-between rounded-[10px] bg-accent px-4 py-3 text-[14.5px] font-medium text-accent-contrast transition-opacity hover:opacity-90"
-              >
-                Download PDF <span aria-hidden>↓</span>
-              </a>
-              <a
-                href={result.docxUrl}
-                className="flex items-center justify-between rounded-[10px] border border-border bg-bg px-4 py-3 text-[14.5px] font-medium text-text transition-colors hover:bg-bg-hover"
-              >
-                Download Word (.docx) <span aria-hidden>↓</span>
-              </a>
+          {results.length > 0 ? (
+            <div className="step-enter flex flex-col gap-4">
+              {results.map((r) => (
+                <div key={r.templateId} className="rounded-[12px] border border-hairline bg-bg p-3.5">
+                  <p className="font-mono text-[11px] font-medium tracking-[0.12em] text-text-muted">
+                    Nº {r.reportNo} · {r.templateName.toUpperCase()}
+                  </p>
+                  <div className="mt-2.5 flex gap-2">
+                    <a
+                      href={r.pdfUrl}
+                      className="flex flex-1 items-center justify-center rounded-[10px] bg-accent px-3 py-2.5 text-[14px] font-medium text-accent-contrast transition-opacity hover:opacity-90"
+                    >
+                      PDF ↓
+                    </a>
+                    <a
+                      href={r.docxUrl}
+                      className="flex flex-1 items-center justify-center rounded-[10px] border border-border bg-bg px-3 py-2.5 text-[14px] font-medium text-text transition-colors hover:bg-bg-hover"
+                    >
+                      Word ↓
+                    </a>
+                  </div>
+                </div>
+              ))}
               <a
                 href={`mailto:?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareBody)}`}
                 title="Opens your email app with a pre-filled message. Attach the downloaded file manually — email links can't carry attachments."
@@ -652,18 +717,20 @@ function StepGenerate({
                 Share via WhatsApp <span aria-hidden>→</span>
               </a>
               <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
-                Stored on this portal as Nº {result.reportNo} — find it anytime under{" "}
+                Stored on this portal — find every report anytime under{" "}
                 <Link href="/reports" className="underline decoration-hairline underline-offset-2">
                   Reports
                 </Link>
-                . Email attachments must be added manually.
+                . Share links point at the first report; email attachments must be added manually.
               </p>
             </div>
           ) : (
             <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 text-center">
-              <p className="text-[14px] font-medium text-text-muted">No report yet</p>
+              <p className="text-[14px] font-medium text-text-muted">
+                {state.templateIds.length} template{state.templateIds.length === 1 ? "" : "s"} selected
+              </p>
               <p className="max-w-56 text-[12.5px] leading-relaxed text-text-tertiary">
-                Generate to get download links and sharing options.
+                Generate to get download links for each selected template.
               </p>
             </div>
           )}

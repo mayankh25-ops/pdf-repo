@@ -20,8 +20,11 @@ npx playwright install chromium   # once, if no system Chromium is available
 npm run dev
 ```
 
-Open http://localhost:3000 and walk the four steps: **Details → Template →
-Photos → Generate**. Every generated report gets a sequential **report number**
+The portal is login-protected (default `admin` / `Explicit@1234`; override with
+`ADMIN_USER` / `ADMIN_PASS` env vars). Open http://localhost:3000 and walk the
+four steps: **Details → Photos → Templates → Generate**. The template step
+previews every template with your real photos — tap one to see all of its
+pages, and multi-select to download several templates at once. Every generated report gets a sequential **report number**
 (e.g. `2026-0014`) and is stored on the portal — search and re-download it
 anytime at `/reports`.
 

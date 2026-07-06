@@ -20,7 +20,7 @@ export interface WizardState {
   scope: string;
   remarks: string;
   buildingPhoto: UploadedImage | null;
-  templateId: TemplateId;
+  templateIds: TemplateId[];
   photos: Record<Phase, UploadedImage[]>;
   paired: boolean;
 }
@@ -36,7 +36,7 @@ export const initialState = (): WizardState => ({
   scope: "",
   remarks: "",
   buildingPhoto: null,
-  templateId: "focused-photo",
+  templateIds: ["focused-photo"],
   photos: { before: [], during: [], after: [] },
   paired: false,
 });

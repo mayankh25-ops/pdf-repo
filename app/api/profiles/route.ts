@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ACCEPTED_LOGO_MIME, ImageError, MAX_UPLOAD_BYTES, processLogo } from "@/lib/image";
+import {
+  ACCEPTED_LOGO_MIME,
+  ACCEPTED_MIME,
+  ImageError,
+  MAX_UPLOAD_BYTES,
+  processBuildingPhoto,
+  processLogo,
+} from "@/lib/image";
 import { listProfiles, saveProfile, saveUpload } from "@/lib/store";
 import { assetUrl } from "@/lib/sample";
 
@@ -12,6 +19,14 @@ const toClient = (p: Awaited<ReturnType<typeof listProfiles>>[number]) => ({
   accent: p.accent,
   logoScale: p.logoScale,
   logo: { id: p.logoId, url: assetUrl(p.logoId), width: p.logoWidth, height: p.logoHeight },
+  building: p.buildingId
+    ? {
+        id: p.buildingId,
+        url: assetUrl(p.buildingId),
+        width: p.buildingWidth ?? 0,
+        height: p.buildingHeight ?? 0,
+      }
+    : null,
 });
 
 export async function GET() {
@@ -56,7 +71,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "A logo file is required." }, { status: 400 });
     }
 
-    const profile = await saveProfile({ id, name, accent, logoScale, ...logoFields });
+    // Optional default building/hero photo for report covers.
+    let buildingFields:
+      | { buildingId: string; buildingWidth: number; buildingHeight: number }
+      | undefined;
+    const buildingFile = form.get("building");
+    if (buildingFile instanceof File && buildingFile.size > 0) {
+      if (!ACCEPTED_MIME.includes(buildingFile.type)) {
+        return NextResponse.json(
+          { error: "Building photo must be JPEG, PNG or WebP." },
+          { status: 415 },
+        );
+      }
+      if (buildingFile.size > MAX_UPLOAD_BYTES) {
+        return NextResponse.json({ error: "Building photo is too large." }, { status: 413 });
+      }
+      const processed = await processBuildingPhoto(Buffer.from(await buildingFile.arrayBuffer()));
+      const rec = await saveUpload(
+        processed.buffer,
+        processed.ext,
+        processed.mime,
+        processed.width,
+        processed.height,
+      );
+      buildingFields = {
+        buildingId: rec.id,
+        buildingWidth: rec.width,
+        buildingHeight: rec.height,
+      };
+    }
+
+    const profile = await saveProfile({
+      id,
+      name,
+      accent,
+      logoScale,
+      ...logoFields,
+      ...buildingFields,
+    });
     if (!profile) {
       return NextResponse.json({ error: "Profile not found." }, { status: 404 });
     }

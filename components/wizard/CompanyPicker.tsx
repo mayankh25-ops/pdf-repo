@@ -9,6 +9,8 @@ export interface CompanyProfileView {
   accent: string;
   logoScale: number;
   logo: { id: string; url: string; width: number; height: number };
+  /** brand-level default building/hero photo for report covers */
+  building?: { id: string; url: string; width: number; height: number } | null;
 }
 
 interface EditorState {
@@ -17,6 +19,7 @@ interface EditorState {
   accent: string;
   logoScale: number;
   currentLogoUrl?: string;
+  currentBuildingUrl?: string;
 }
 
 /**
@@ -37,13 +40,16 @@ export function CompanyPicker({
 }) {
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [buildingFile, setBuildingFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const buildingRef = useRef<HTMLInputElement>(null);
 
   const openCreate = () => {
     setEditor({ name: "", accent: "#D9232E", logoScale: 1 });
     setLogoFile(null);
+    setBuildingFile(null);
     setError(null);
   };
   const openEdit = (p: CompanyProfileView) => {
@@ -53,8 +59,10 @@ export function CompanyPicker({
       accent: p.accent,
       logoScale: p.logoScale ?? 1,
       currentLogoUrl: p.logo.url,
+      currentBuildingUrl: p.building?.url,
     });
     setLogoFile(null);
+    setBuildingFile(null);
     setError(null);
   };
 
@@ -73,12 +81,14 @@ export function CompanyPicker({
       form.set("accent", editor.accent);
       form.set("logoScale", String(editor.logoScale));
       if (logoFile) form.set("logo", logoFile);
+      if (buildingFile) form.set("building", buildingFile);
       const res = await fetch("/api/profiles", { method: "POST", body: form });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Could not save the profile.");
       onSaved(json.profile);
       setEditor(null);
       setLogoFile(null);
+      setBuildingFile(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save the profile.");
     } finally {
@@ -99,7 +109,7 @@ export function CompanyPicker({
           return (
             <div
               key={p.id}
-              className={`flex min-h-12 items-stretch overflow-hidden rounded-[12px] border transition-colors ${
+              className={`flex min-h-12 max-w-full items-stretch overflow-hidden rounded-[12px] border transition-colors ${
                 active
                   ? "border-border-strong bg-bg-subtle ring-2 ring-accent"
                   : "border-border bg-bg hover:bg-bg-hover"
@@ -109,12 +119,12 @@ export function CompanyPicker({
                 type="button"
                 onClick={() => onSelect(p.id)}
                 aria-pressed={active}
-                className="flex items-center gap-3 px-3.5 py-2"
+                className="flex min-w-0 items-center gap-3 px-3.5 py-2"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.logo.url} alt="" className="h-7 w-auto max-w-16 object-contain" />
-                <span className="text-left">
-                  <span className="block text-[14px] font-medium leading-tight text-text">
+                <img src={p.logo.url} alt="" className="h-7 w-auto max-w-16 shrink-0 object-contain" />
+                <span className="min-w-0 text-left">
+                  <span className="block truncate text-[14px] font-medium leading-tight text-text">
                     {p.name}
                   </span>
                   <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-text-muted">
@@ -153,7 +163,7 @@ export function CompanyPicker({
           <p className="mb-4 font-mono text-[11px] font-medium tracking-[0.12em] text-text-muted">
             {editor.id ? "EDIT BRAND" : "NEW BRAND"}
           </p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Brand name">
               <input
                 className={inputCls}
@@ -182,7 +192,7 @@ export function CompanyPicker({
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="flex min-h-12 w-full items-center justify-between rounded-[10px] border border-dashed border-border bg-bg px-4 text-[15px] text-text-muted transition-colors hover:bg-bg-hover"
+                  className="flex min-h-12 w-full items-center justify-between gap-3 rounded-[10px] border border-dashed border-border bg-bg px-4 text-[15px] text-text-muted transition-colors hover:bg-bg-hover"
                 >
                   <span className="truncate">
                     {logoFile
@@ -199,6 +209,44 @@ export function CompanyPicker({
                   accept="image/svg+xml,image/png,image/jpeg,image/webp"
                   hidden
                   onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Building photo — default report hero" optional>
+                <button
+                  type="button"
+                  onClick={() => buildingRef.current?.click()}
+                  className="relative flex h-28 w-full items-center justify-center overflow-hidden rounded-[10px] border border-dashed border-border bg-bg text-[14px] text-text-muted transition-colors hover:bg-bg-hover sm:h-32"
+                >
+                  {buildingFile || editor.currentBuildingUrl ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={buildingFile ? URL.createObjectURL(buildingFile) : editor.currentBuildingUrl}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                      <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-3 py-1.5 text-[12px] font-medium text-white">
+                        ⟳ Change
+                      </span>
+                    </>
+                  ) : (
+                    <span className="flex flex-col items-center gap-0.5 px-4 text-center">
+                      <span className="font-medium text-text">Tap to add a building photo</span>
+                      <span className="text-[12px]">
+                        Used as the cover hero on every report for this brand — reports can still
+                        override it.
+                      </span>
+                    </span>
+                  )}
+                </button>
+                <input
+                  ref={buildingRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  hidden
+                  onChange={(e) => setBuildingFile(e.target.files?.[0] ?? null)}
                 />
               </Field>
             </div>

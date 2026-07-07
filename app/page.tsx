@@ -83,6 +83,14 @@ export default function Home() {
 
   const profile = profiles.find((p) => p.id === profileId) ?? profiles[0] ?? null;
 
+  // Keep the active step chip visible in the scrollable step nav on phones.
+  const stepNavRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    stepNavRef.current
+      ?.querySelector('[data-active="true"]')
+      ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [state.step]);
+
   const toggleTemplate = (id: TemplateId) =>
     setState((s) => ({
       ...s,
@@ -125,28 +133,28 @@ export default function Home() {
   return (
     <div className="relative flex min-h-dvh flex-col bg-bg text-text">
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
-      <header className="mb-6 flex items-end justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <header className="mb-6 flex items-start justify-between gap-3 sm:items-end sm:gap-4">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           {profile && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={profile.logo.url}
               alt={profile.name}
-              className="h-12 w-auto max-w-32 shrink-0 object-contain sm:h-14"
+              className="h-10 w-auto max-w-20 shrink-0 object-contain sm:h-14 sm:max-w-32"
             />
           )}
-          <div>
-            <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-text-muted">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] font-medium tracking-[0.14em] text-text-muted sm:text-[11px]">
               CLEANING WORKS REPORT GENERATOR
             </p>
-            <h1 className="mt-2 font-display text-[24px] font-semibold tracking-[-0.01em] text-text sm:text-[30px]">
+            <h1 className="mt-1.5 font-display text-[19px] font-semibold leading-snug tracking-[-0.01em] text-text sm:mt-2 sm:text-[30px]">
               Client-ready before / during / after reports
             </h1>
           </div>
         </div>
         <Link
           href="/reports"
-          className="shrink-0 rounded-[10px] border border-border bg-bg px-4 py-2 text-[14px] font-medium text-text transition-colors hover:bg-bg-hover"
+          className="shrink-0 rounded-[10px] border border-border bg-bg px-3 py-2 text-[13px] font-medium text-text transition-colors hover:bg-bg-hover sm:px-4 sm:text-[14px]"
         >
           Reports
         </Link>
@@ -169,7 +177,11 @@ export default function Home() {
       </div>
 
       {/* Step indicator */}
-      <nav aria-label="Steps" className="mb-8 flex items-center gap-1 overflow-x-auto border-b border-hairline pb-4">
+      <nav
+        ref={stepNavRef}
+        aria-label="Steps"
+        className="mb-8 flex items-center gap-1 overflow-x-auto border-b border-hairline pb-4"
+      >
         {STEPS.map((label, i) => {
           const n = (i + 1) as WizardState["step"];
           const active = state.step === n;
@@ -178,8 +190,9 @@ export default function Home() {
             <button
               key={label}
               type="button"
+              data-active={active || undefined}
               onClick={() => (done || active ? go(n) : undefined)}
-              className={`flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 py-2 text-[14px] transition-colors ${
+              className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[13px] transition-colors sm:gap-2 sm:px-4 sm:text-[14px] ${
                 active
                   ? "bg-accent font-medium text-accent-contrast"
                   : done
@@ -195,7 +208,13 @@ export default function Home() {
       </nav>
 
       {state.step === 1 && (
-        <StepDetails state={state} set={set} onNext={() => go(2)} canNext={canLeaveStep1} />
+        <StepDetails
+          state={state}
+          set={set}
+          onNext={() => go(2)}
+          canNext={canLeaveStep1}
+          profile={profile}
+        />
       )}
       {state.step === 2 && (
         <div className="step-enter">
@@ -346,6 +365,7 @@ function SingleUpload({
   onChange,
   accept,
   hero = false,
+  fallback = null,
 }: {
   label: string;
   optionalNote: string;
@@ -355,10 +375,13 @@ function SingleUpload({
   accept: string;
   /** large full-width preview (building/homepage picture) */
   hero?: boolean;
+  /** brand-level default shown (and used) when no per-report photo is set */
+  fallback?: UploadedImage | null;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const shown = value ?? fallback;
   return (
     <Field label={label} optional>
       <div className={hero ? "flex flex-col gap-2" : "flex items-center gap-3"}>
@@ -367,17 +390,29 @@ function SingleUpload({
           onClick={() => ref.current?.click()}
           className={
             hero
-              ? "relative flex h-44 w-full items-center justify-center overflow-hidden rounded-[12px] border border-dashed border-border bg-bg-subtle text-[14px] text-text-muted transition-colors hover:bg-bg-hover sm:h-52"
+              ? "relative flex h-40 w-full items-center justify-center overflow-hidden rounded-[12px] border border-dashed border-border bg-bg-subtle text-[14px] text-text-muted transition-colors hover:bg-bg-hover sm:h-52"
               : "flex h-[72px] w-28 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-dashed border-border bg-bg-subtle text-[12px] text-text-muted transition-colors hover:bg-bg-hover"
           }
         >
           {busy ? (
             <Spinner />
-          ) : value ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={value.url} alt="" className="size-full object-cover" />
+          ) : shown ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={shown.url} alt="" className="size-full object-cover" />
+              {hero && (
+                <span className="absolute bottom-2.5 right-2.5 rounded-full bg-black/60 px-3 py-1.5 text-[12px] font-medium text-white">
+                  ⟳ Change
+                </span>
+              )}
+              {hero && !value && fallback && (
+                <span className="absolute left-2.5 top-2.5 rounded-full bg-black/60 px-3 py-1.5 text-[11px] font-medium tracking-[0.06em] text-white">
+                  FROM BRAND PROFILE
+                </span>
+              )}
+            </>
           ) : hero ? (
-            <span className="flex flex-col items-center gap-1">
+            <span className="flex flex-col items-center gap-1 px-4 text-center">
               <span className="font-medium text-text">Tap to add the building photo</span>
               <span className="text-[12.5px]">{optionalNote}</span>
             </span>
@@ -394,7 +429,7 @@ function SingleUpload({
                 onClick={() => onChange(null)}
                 className="mt-1 text-[12.5px] underline decoration-hairline underline-offset-2 hover:text-text"
               >
-                Remove
+                {fallback ? "Use brand photo instead" : "Remove"}
               </button>
             </>
           ) : hero ? null : (
@@ -433,12 +468,17 @@ function StepDetails({
   set,
   onNext,
   canNext,
+  profile,
 }: {
   state: WizardState;
   set: <K extends keyof WizardState>(k: K, v: WizardState[K]) => void;
   onNext: () => void;
   canNext: boolean;
+  profile: CompanyProfileView | null;
 }) {
+  const brandBuilding: UploadedImage | null = profile?.building
+    ? { ...profile.building, name: "Brand building photo" }
+    : null;
   return (
     <div className="step-enter">
       <StepHeading
@@ -452,7 +492,7 @@ function StepDetails({
           if (canNext) onNext();
         }}
       >
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Field label="Report title">
               <input
@@ -510,6 +550,7 @@ function StepDetails({
               value={state.buildingPhoto}
               onChange={(v) => set("buildingPhoto", v)}
               hero
+              fallback={brandBuilding}
             />
           </div>
           <Field label="Prepared by" optional>

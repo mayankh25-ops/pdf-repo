@@ -139,8 +139,11 @@ export async function cleanupExpired() {
       }
     }
     const stale = Date.now() - 2 * DOWNLOAD_TTL_MS;
-    // Profile logos live in uploads but must never be swept.
-    const keep = new Set((await listProfiles()).map((p) => p.logoId));
+    // Profile logos and brand building photos live in uploads but must
+    // never be swept.
+    const keep = new Set(
+      (await listProfiles()).flatMap((p) => [p.logoId, p.buildingId]).filter(Boolean),
+    );
     for (const dir of [DIRS.uploads, DIRS.jobs]) {
       for (const file of await readdir(dir)) {
         if (keep.has(file.replace(/\.[^.]+$/, ""))) continue;
@@ -180,6 +183,11 @@ export interface CompanyProfile {
   logoHeight: number;
   /** multiplier for the logo size in documents (default 1) */
   logoScale: number;
+  /** optional default building/hero photo (upload id) used on report covers
+   *  when a report doesn't set its own */
+  buildingId?: string;
+  buildingWidth?: number;
+  buildingHeight?: number;
   createdAt: string;
 }
 

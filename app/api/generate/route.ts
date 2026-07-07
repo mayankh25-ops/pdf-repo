@@ -120,6 +120,14 @@ export async function POST(req: NextRequest) {
         width: profile.logoWidth,
         height: profile.logoHeight,
       };
+      // No per-report hero? Fall back to the brand's building photo.
+      if (!report.buildingPhoto && profile.buildingId) {
+        report.buildingPhoto = {
+          id: profile.buildingId,
+          width: profile.buildingWidth ?? 0,
+          height: profile.buildingHeight ?? 0,
+        };
+      }
     }
 
     report.reportNo = await nextReportNo();

@@ -52,7 +52,7 @@ export function previewView(
     company: profile
       ? { name: profile.name, accent: profile.accent, logoScale: profile.logoScale }
       : sample.company,
-    buildingPhoto: state.buildingPhoto ?? sample.buildingPhoto,
+    buildingPhoto: state.buildingPhoto ?? profile?.building ?? sample.buildingPhoto,
     logo: profile ? { ...profile.logo, caption: undefined } : sample.logo,
     photos: {
       before: state.photos.before.length ? state.photos.before : sample.photos.before,

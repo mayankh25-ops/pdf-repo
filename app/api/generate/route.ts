@@ -9,8 +9,8 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const TEMPLATE_IDS: TemplateId[] = [
-  "focused-photo",
   "focused-card",
+  "focused-photo",
   "focused-scrim",
   "hero-dark",
   "hero-light",
@@ -67,7 +67,7 @@ function sanitize(input: unknown): ReportData | null {
     remarks: str(raw.remarks, 4000) || undefined,
     templateId: TEMPLATE_IDS.includes(raw.templateId as TemplateId)
       ? (raw.templateId as TemplateId)
-      : "focused-photo",
+      : "focused-card",
     paired: raw.paired === true,
     buildingPhoto: photoList([raw.buildingPhoto])[0] ?? null,
     logo: photoList([raw.logo])[0] ?? null,

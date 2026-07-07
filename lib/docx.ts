@@ -21,6 +21,7 @@ import path from "node:path";
 import type { Phase } from "./types";
 import { PHASES, PHASE_LABEL, PHASE_TITLE } from "./types";
 import type { PhotoMeta, ReportData } from "./types";
+import { photoPageChunks } from "./layout";
 import { readUpload } from "./store";
 
 /*
@@ -97,19 +98,45 @@ function photoBlock(photo: LoadedPhoto, phase: Phase, maxW?: number): Paragraph[
   ];
 }
 
+const photoCell = (photo: LoadedPhoto, phase: Phase) =>
+  new TableCell({
+    borders: {
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+    },
+    margins: { top: 100, bottom: 100, left: 0, right: 140 },
+    children: photoBlock(photo, phase, 310),
+  });
+
 function comparisonRow(before: LoadedPhoto, after: LoadedPhoto): TableRow {
-  const cell = (photo: LoadedPhoto, phase: Phase) =>
-    new TableCell({
-      borders: {
-        top: { style: BorderStyle.NONE },
-        bottom: { style: BorderStyle.NONE },
-        left: { style: BorderStyle.NONE },
-        right: { style: BorderStyle.NONE },
-      },
-      margins: { top: 100, bottom: 100, left: 0, right: 140 },
-      children: photoBlock(photo, phase, 310),
-    });
-  return new TableRow({ children: [cell(before, "before"), cell(after, "after")] });
+  return new TableRow({ children: [photoCell(before, "before"), photoCell(after, "after")] });
+}
+
+const bareTable = (rows: TableRow[]) =>
+  new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.NONE },
+    },
+    rows,
+  });
+
+/** Four photos as a 2×2 grid — mirrors the PDF's grid pages. */
+function gridTable(group: LoadedPhoto[], phase: Phase): Table {
+  const rows: TableRow[] = [];
+  for (let i = 0; i < group.length; i += 2) {
+    const cells = [photoCell(group[i], phase)];
+    if (group[i + 1]) cells.push(photoCell(group[i + 1], phase));
+    rows.push(new TableRow({ children: cells }));
+  }
+  return bareTable(rows);
 }
 
 export async function renderDocx(report: ReportData): Promise<Buffer> {
@@ -302,27 +329,23 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
   const paired =
     report.paired && photos.before.length > 0 && photos.before.length === photos.after.length;
 
+  // Photos organised like the PDF: 2×2 grids first, then big feature shots.
+  const emitSection = (list: LoadedPhoto[], phase: Phase) => {
+    for (const chunk of photoPageChunks(list.length)) {
+      const group = list.slice(chunk.start, chunk.start + chunk.count);
+      if (chunk.kind === "grid") body.push(gridTable(group, phase));
+      else for (const p of group) body.push(...photoBlock(p, phase));
+    }
+  };
+
   if (paired) {
     sectionHeading("01", "Before & after", photos.before.length * 2, firstBlock);
-    body.push(
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: {
-          top: { style: BorderStyle.NONE },
-          bottom: { style: BorderStyle.NONE },
-          left: { style: BorderStyle.NONE },
-          right: { style: BorderStyle.NONE },
-          insideHorizontal: { style: BorderStyle.NONE },
-          insideVertical: { style: BorderStyle.NONE },
-        },
-        rows: photos.before.map((b, i) => comparisonRow(b, photos.after[i])),
-      }),
-    );
+    body.push(bareTable(photos.before.map((b, i) => comparisonRow(b, photos.after[i]))));
     if (photos.during.length) {
       sectionHeading("02", PHASE_TITLE.during, photos.during.length);
-      for (const p of photos.during) body.push(...photoBlock(p, "during"));
+      emitSection(photos.during, "during");
     }
-    for (const p of photos.general) body.push(...photoBlock(p, "general"));
+    emitSection(photos.general, "general");
   } else {
     const idx: Record<Phase, string> = { before: "01", during: "02", after: "03", general: "04" };
     for (const phase of PHASES) {
@@ -331,7 +354,7 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
         sectionHeading(idx[phase], PHASE_TITLE[phase], photos[phase].length, firstBlock);
       }
       firstBlock = false;
-      for (const p of photos[phase]) body.push(...photoBlock(p, phase));
+      emitSection(photos[phase], phase);
     }
   }
 

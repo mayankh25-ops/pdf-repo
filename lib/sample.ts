@@ -57,7 +57,7 @@ export const FOCUSED_LOGO: PhotoMeta & { url: string } = {
   height: 47,
 };
 
-export const sampleReport = (templateId: TemplateId = "focused-photo"): ReportView => ({
+export const sampleReport = (templateId: TemplateId = "focused-card"): ReportView => ({
   reportNo: "2026-0001",
   title: "Floor Scrubbing & Pressure Wash",
   building: "Aurora Melbourne Central",

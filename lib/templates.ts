@@ -9,23 +9,24 @@ export interface TemplateDef {
   /** Whether the cover needs the building photo to look right */
   usesPhoto: boolean;
   /** "focused" = the client's own report family (light chrome on every page,
-   *  one large photo per page, Thank-you last page) */
+   *  2×2 photo grids plus big feature pages, Thank-you last page) */
   family?: "focused";
 }
 
 export const TEMPLATES: TemplateDef[] = [
   {
-    id: "focused-photo",
-    name: "Focused — Photo cover",
-    blurb: "Full photo card, building pill and white title over the image, meta bar at the base.",
+    id: "focused-card",
+    name: "Focused — Spec card",
+    blurb:
+      "Photo card with an overlapping white spec card, photos organised as 2×2 grids plus big feature shots.",
     dark: false,
     usesPhoto: true,
     family: "focused",
   },
   {
-    id: "focused-card",
-    name: "Focused — Spec card",
-    blurb: "Photo card with an overlapping white spec card carrying title and meta columns.",
+    id: "focused-photo",
+    name: "Focused — Photo cover",
+    blurb: "Full photo card, building pill and white title over the image, meta bar at the base.",
     dark: false,
     usesPhoto: true,
     family: "focused",

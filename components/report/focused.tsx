@@ -15,9 +15,10 @@ const fmtDate = (iso: string) => {
 /* ---------------------------------------------------------------------------
    The "Focused" family — a faithful replication of the client's own report
    templates: light chrome on EVERY page (logo left, BUILDING · CLEANING
-   REPORT right, company + WORKS COMPLETED footer), rounded photo cards, one
-   large photo per page with a coloured phase pill beneath, bold headings with
-   a heavy rule, and a centred "Thank you." last page.
+   REPORT right, company + WORKS COMPLETED footer), rounded photo cards with
+   coloured phase pills, 2×2 grid pages followed by large feature photos
+   (lib/layout.ts), bold headings with a heavy rule, and a centred
+   "Thank you." last page.
 --------------------------------------------------------------------------- */
 
 const mono: React.CSSProperties = {
@@ -417,6 +418,71 @@ export function FocusedPhotoBlock({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** 2×2 grid page — four photos in uniform rounded cells, pill and caption
+ *  overlaid on each image ("4 in a page" from the newest reference layout). */
+export function FocusedPhotoGrid({ photos, phase }: { photos: PhotoView[]; phase: Phase }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gridTemplateRows: "1fr 1fr",
+        gap: "5mm",
+      }}
+    >
+      {photos.map((p) => (
+        <div
+          key={p.id}
+          style={{
+            position: "relative",
+            borderRadius: "3mm",
+            overflow: "hidden",
+            background: "var(--sand-3)",
+            minHeight: 0,
+          }}
+        >
+          <Img url={p.url} style={{ position: "absolute", inset: 0, height: "100%" }} />
+          {(PHASE_LABEL[phase] || p.caption) && (
+            <div
+              style={{
+                position: "absolute",
+                left: "4mm",
+                right: "4mm",
+                bottom: "4mm",
+                display: "flex",
+                alignItems: "center",
+                gap: "2.5mm",
+              }}
+            >
+              <PhasePill phase={phase} />
+              {p.caption && (
+                <span
+                  style={{
+                    ...mono,
+                    letterSpacing: "0.04em",
+                    color: "#ffffff",
+                    background: "rgba(10,10,10,0.55)",
+                    padding: "1.6mm 3mm",
+                    borderRadius: "999px",
+                    lineHeight: 1.25,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {p.caption}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

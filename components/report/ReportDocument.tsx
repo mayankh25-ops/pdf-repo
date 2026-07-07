@@ -2,13 +2,15 @@ import type { Phase } from "@/lib/types";
 import { PHASES, PHASE_TITLE } from "@/lib/types";
 import { getTemplate } from "@/lib/templates";
 import type { PhotoView, ReportView } from "@/lib/sample";
-import { ChromePage, Logo, PhotoCell, fmtDate } from "./primitives";
+import { ChromePage, Logo, PhotoCell, TagChip, fmtDate } from "./primitives";
 import { Cover } from "./covers";
+import { photoPageChunks } from "@/lib/layout";
 import {
   FocusedCover,
   FocusedHeading,
   FocusedPage,
   FocusedPhotoBlock,
+  FocusedPhotoGrid,
   FocusedScope,
   FocusedThankYou,
 } from "./focused";
@@ -22,20 +24,26 @@ const SECTION_INDEX: Record<Phase, string> = { before: "01", during: "02", after
 
 const isPortrait = (p: PhotoView) => p.height >= p.width;
 
-type SpreadKind = "single" | "portrait-pair" | "landscape-pair";
+type SpreadKind = "single" | "portrait-pair" | "landscape-pair" | "quad";
 interface Spread {
   kind: SpreadKind;
   photos: PhotoView[];
 }
 
 /**
- * Groups photos into pages without ever distorting or cropping them:
- * two portraits sit side-by-side, two landscapes stack, and a mixed or
- * leftover photo gets a full page to itself. Order is preserved.
+ * Groups photos into pages the way the newest reference layout does:
+ * 2×2 grid pages while four or more photos remain ("4 in a page"), then
+ * the tail runs big without distortion or cropping — two portraits sit
+ * side-by-side, two landscapes stack, and a mixed or leftover photo gets
+ * a full page to itself. Order is preserved.
  */
 function paginate(photos: PhotoView[]): Spread[] {
   const spreads: Spread[] = [];
   let i = 0;
+  while (photos.length - i >= 4) {
+    spreads.push({ kind: "quad", photos: photos.slice(i, i + 4) });
+    i += 4;
+  }
   while (i < photos.length) {
     const a = photos[i];
     const b = photos[i + 1];
@@ -53,7 +61,62 @@ function paginate(photos: PhotoView[]): Spread[] {
   return spreads;
 }
 
+/** 2×2 grid page for the standard family — uniform cells, chip on image,
+ *  caption pinned to the cell base. */
+function QuadBlock({ photos, phase }: { photos: PhotoView[]; phase: Phase }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gridTemplateRows: "1fr 1fr",
+        gap: `${GAP}mm`,
+      }}
+    >
+      {photos.map((p) => (
+        <figure key={p.id} style={{ position: "relative", margin: 0, borderRadius: "2mm", overflow: "hidden", minHeight: 0, background: "var(--bg-subtle)" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={p.url}
+            alt=""
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+          <TagChip phase={phase} />
+          {p.caption && (
+            <figcaption
+              style={{
+                position: "absolute",
+                left: "4mm",
+                right: "4mm",
+                bottom: "4mm",
+                fontSize: "7.5pt",
+                lineHeight: 1.3,
+                color: "var(--white-a12)",
+                background: "var(--black-a9)",
+                padding: "1.6mm 2.8mm",
+                borderRadius: "1.5mm",
+                width: "fit-content",
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {p.caption}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+    </div>
+  );
+}
+
 function SpreadBlock({ spread, phase }: { spread: Spread; phase: Phase }) {
+  if (spread.kind === "quad") {
+    return <QuadBlock photos={spread.photos} phase={phase} />;
+  }
   if (spread.kind === "portrait-pair") {
     const boxW = (CONTENT_W - GAP) / 2;
     return (
@@ -270,8 +333,9 @@ export function DocumentLastPage({ r }: { r: ReportView }) {
 
 const FOCUSED_IDX: Record<Phase, string> = { before: "01", during: "02", after: "03", general: "04" };
 
-/** The client's own family: one large photo per page, heading inline on the
- *  first page of each section, Thank-you last page. */
+/** The client's own family: 2×2 grid pages then large feature photos per
+ *  section (lib/layout.ts), heading inline on the first page of each
+ *  section, Thank-you last page. */
 function buildFocusedPages(r: ReportView): React.ReactNode[] {
   const pages: React.ReactNode[] = [<FocusedCover key="cover" r={r} />];
   if (r.scope?.trim()) pages.push(<FocusedScope key="scope" r={r} />);
@@ -313,15 +377,26 @@ function buildFocusedPages(r: ReportView): React.ReactNode[] {
     });
   } else {
     for (const phase of PHASES) {
-      r.photos[phase].forEach((photo, i) => {
+      const list = r.photos[phase];
+      photoPageChunks(list.length).forEach((chunk, ci) => {
+        const heading = ci === 0 && PHASE_TITLE[phase] !== "";
+        const group = list.slice(chunk.start, chunk.start + chunk.count);
         pages.push(
-          <FocusedPage key={`${phase}-${i}`} r={r}>
-            {i === 0 && PHASE_TITLE[phase] !== "" && (
-              <FocusedHeading index={FOCUSED_IDX[phase]} title={PHASE_TITLE[phase]} />
+          <FocusedPage key={`${phase}-${ci}`} r={r}>
+            {heading && <FocusedHeading index={FOCUSED_IDX[phase]} title={PHASE_TITLE[phase]} />}
+            {chunk.kind === "grid" ? (
+              <FocusedPhotoGrid photos={group} phase={phase} />
+            ) : chunk.kind === "duo" ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-evenly", minHeight: 0 }}>
+                {group.map((photo) => (
+                  <FocusedPhotoBlock key={photo.id} photo={photo} phase={phase} boxH={heading ? 88 : 94} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
+                <FocusedPhotoBlock photo={group[0]} phase={phase} boxH={heading ? 185 : 200} />
+              </div>
             )}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
-              <FocusedPhotoBlock photo={photo} phase={phase} boxH={i === 0 ? 185 : 200} />
-            </div>
           </FocusedPage>,
         );
       });

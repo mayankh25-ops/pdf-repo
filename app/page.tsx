@@ -231,6 +231,12 @@ export default function Home() {
                 phase={phase}
                 images={state.photos[phase]}
                 onChange={(images) => set("photos", { ...state.photos, [phase]: images })}
+                onAppend={(imgs) =>
+                  setState((s) => ({
+                    ...s,
+                    photos: { ...s.photos, [phase]: [...s.photos[phase], ...imgs] },
+                  }))
+                }
                 onMove={movePhoto}
                 narrow={photoLayout !== "rows"}
               />

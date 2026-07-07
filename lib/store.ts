@@ -18,6 +18,7 @@ export const DIRS = {
   out: path.join(ROOT, "out"),
   reports: path.join(ROOT, "reports"),
   profiles: path.join(ROOT, "profiles"),
+  users: path.join(ROOT, "users"),
 };
 for (const dir of Object.values(DIRS)) mkdirSync(dir, { recursive: true });
 
@@ -299,3 +300,39 @@ export async function listReports(query?: string): Promise<ReportRecord[]> {
       .includes(q),
   );
 }
+
+/* ---------------------------------------------------------------------------
+   User accounts — email + salted password hash. The env-configured admin
+   account exists outside this store and always works.
+--------------------------------------------------------------------------- */
+
+export interface UserRecord {
+  email: string;
+  name: string;
+  salt: string;
+  passHash: string;
+  createdAt: string;
+  resetToken?: string;
+  resetExpires?: number;
+}
+
+const userFile = (email: string) =>
+  path.join(
+    DIRS.users,
+    `${crypto.createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 32)}.json`,
+  );
+
+export async function getUser(email: string): Promise<UserRecord | null> {
+  try {
+    return JSON.parse(await readFile(userFile(email), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+export async function saveUser(user: UserRecord): Promise<void> {
+  await writeFile(userFile(user.email), JSON.stringify(user));
+}
+
+export const newSalt = () => crypto.randomBytes(12).toString("hex");
+export const newResetToken = () => crypto.randomBytes(16).toString("hex");

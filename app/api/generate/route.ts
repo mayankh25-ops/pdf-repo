@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Phase, ReportData, TemplateId } from "@/lib/types";
 import { renderPdf } from "@/lib/pdf";
 import { renderDocx } from "@/lib/docx";
+import { AUTH_COOKIE, verifySessionToken } from "@/lib/auth";
 import { getProfile, nextReportNo, registerReport, saveJob, saveOutput } from "@/lib/store";
 
 export const runtime = "nodejs";
@@ -144,8 +145,12 @@ export async function POST(req: NextRequest) {
       { persistent: true },
     );
 
+    const createdBy =
+      (await verifySessionToken(req.cookies.get(AUTH_COOKIE)?.value)) ?? undefined;
+
     await registerReport({
       reportNo: report.reportNo,
+      createdBy,
       title: report.title,
       building: report.building,
       date: report.date,

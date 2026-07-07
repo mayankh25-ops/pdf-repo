@@ -147,7 +147,7 @@ export function UploadZone({
     >
       <header className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="font-mono text-[12px] font-medium tracking-[0.1em] text-text">
+          <h3 className="font-mono text-[14px] font-bold tracking-[0.12em] text-text">
             {ZONE_TITLE[phase]}
           </h3>
           <p className="mt-0.5 text-[12.5px] text-text-muted">{ZONE_COPY[phase]}</p>

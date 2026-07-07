@@ -80,6 +80,8 @@ export interface GenerateResult {
 
 export interface ReportRecord {
   reportNo: string;
+  /** email of the signed-in user who generated it */
+  createdBy?: string;
   title: string;
   building: string;
   date: string;

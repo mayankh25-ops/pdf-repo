@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_COOKIE, expectedToken } from "@/lib/auth";
+import { AUTH_COOKIE, verifySessionToken } from "@/lib/auth";
 
 /**
  * Gates the portal behind the admin login. Left open:
@@ -10,8 +10,8 @@ import { AUTH_COOKIE, expectedToken } from "@/lib/auth";
  *  - static assets (_next, fonts, brand, samples)
  */
 export async function middleware(req: NextRequest) {
-  const token = req.cookies.get(AUTH_COOKIE)?.value;
-  if (token && token === (await expectedToken())) return NextResponse.next();
+  const email = await verifySessionToken(req.cookies.get(AUTH_COOKIE)?.value);
+  if (email) return NextResponse.next();
 
   if (req.nextUrl.pathname.startsWith("/api")) {
     return NextResponse.json({ error: "Unauthorised — please sign in." }, { status: 401 });
@@ -25,6 +25,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next|login|api/login|print|api/images|api/files|samples|brand|fonts|favicon\\.ico).*)",
+    "/((?!_next|login|reset|api/login|api/register|api/forgot|api/reset|print|api/images|api/files|samples|brand|fonts|favicon\\.ico).*)",
   ],
 };

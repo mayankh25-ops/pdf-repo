@@ -126,13 +126,23 @@ export default function Home() {
     <div className="relative flex min-h-dvh flex-col bg-bg text-text">
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
       <header className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-text-muted">
-            CLEANING WORKS REPORT GENERATOR
-          </p>
-          <h1 className="mt-2 font-display text-[26px] font-semibold tracking-[-0.01em] text-text sm:text-[32px]">
-            Client-ready before / during / after reports
-          </h1>
+        <div className="flex items-center gap-4">
+          {profile && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.logo.url}
+              alt={profile.name}
+              className="h-12 w-auto max-w-32 shrink-0 object-contain sm:h-14"
+            />
+          )}
+          <div>
+            <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-text-muted">
+              CLEANING WORKS REPORT GENERATOR
+            </p>
+            <h1 className="mt-2 font-display text-[24px] font-semibold tracking-[-0.01em] text-text sm:text-[30px]">
+              Client-ready before / during / after reports
+            </h1>
+          </div>
         </div>
         <Link
           href="/reports"
@@ -335,6 +345,7 @@ function SingleUpload({
   value,
   onChange,
   accept,
+  hero = false,
 }: {
   label: string;
   optionalNote: string;
@@ -342,23 +353,34 @@ function SingleUpload({
   value: UploadedImage | null;
   onChange: (v: UploadedImage | null) => void;
   accept: string;
+  /** large full-width preview (building/homepage picture) */
+  hero?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
     <Field label={label} optional>
-      <div className="flex items-center gap-3">
+      <div className={hero ? "flex flex-col gap-2" : "flex items-center gap-3"}>
         <button
           type="button"
           onClick={() => ref.current?.click()}
-          className="flex h-[72px] w-28 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-dashed border-border bg-bg-subtle text-[12px] text-text-muted transition-colors hover:bg-bg-hover"
+          className={
+            hero
+              ? "relative flex h-44 w-full items-center justify-center overflow-hidden rounded-[12px] border border-dashed border-border bg-bg-subtle text-[14px] text-text-muted transition-colors hover:bg-bg-hover sm:h-52"
+              : "flex h-[72px] w-28 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-dashed border-border bg-bg-subtle text-[12px] text-text-muted transition-colors hover:bg-bg-hover"
+          }
         >
           {busy ? (
             <Spinner />
           ) : value ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={value.url} alt="" className="size-full object-cover" />
+          ) : hero ? (
+            <span className="flex flex-col items-center gap-1">
+              <span className="font-medium text-text">Tap to add the building photo</span>
+              <span className="text-[12.5px]">{optionalNote}</span>
+            </span>
           ) : (
             "Upload"
           )}
@@ -366,7 +388,7 @@ function SingleUpload({
         <div className="min-w-0 text-[13px] text-text-muted">
           {value ? (
             <>
-              <p className="truncate text-text">{value.name}</p>
+              {!hero && <p className="truncate text-text">{value.name}</p>}
               <button
                 type="button"
                 onClick={() => onChange(null)}
@@ -375,7 +397,7 @@ function SingleUpload({
                 Remove
               </button>
             </>
-          ) : (
+          ) : hero ? null : (
             <p>{optionalNote}</p>
           )}
         </div>
@@ -479,14 +501,17 @@ function StepDetails({
               onChange={(e) => set("area", e.target.value)}
             />
           </Field>
-          <SingleUpload
-            label="Building photo"
-            optionalNote="Used as the cover hero image."
-            kind="building"
-            accept="image/jpeg,image/png,image/webp"
-            value={state.buildingPhoto}
-            onChange={(v) => set("buildingPhoto", v)}
-          />
+          <div className="sm:col-span-2">
+            <SingleUpload
+              label="Building photo"
+              optionalNote="Used as the cover hero image on the report."
+              kind="building"
+              accept="image/jpeg,image/png,image/webp"
+              value={state.buildingPhoto}
+              onChange={(v) => set("buildingPhoto", v)}
+              hero
+            />
+          </div>
           <Field label="Prepared by" optional>
             <input
               className={inputCls}

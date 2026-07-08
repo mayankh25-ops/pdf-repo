@@ -22,6 +22,14 @@ const ZONE_TITLE: Record<Phase, string> = {
   general: "NO TAG",
 };
 
+/** Zone dot colours (design handoff); general renders as an outlined dot. */
+const ZONE_DOT: Record<Phase, string | null> = {
+  before: "var(--tag-before)",
+  during: "var(--tag-during)",
+  after: "var(--tag-after)",
+  general: null,
+};
+
 const DND_MIME = "application/x-cwr-photo";
 
 export interface MovePayload {
@@ -65,9 +73,11 @@ export function UploadZone({
   narrow?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const uploading = queue.some((q) => q.progress >= 0);
+  const empty = images.length === 0 && queue.length === 0;
 
   const setItem = (key: string, patch: Partial<QueueItem>) =>
     setQueue((prev) => prev.map((q) => (q.key === key ? { ...q, ...patch } : q)));
@@ -145,44 +155,61 @@ export function UploadZone({
       }}
       onDrop={handleZoneDrop}
     >
-      <header className="mb-3 flex items-center justify-between">
-        <div>
-          <h3 className="font-mono text-[14px] font-bold tracking-[0.12em] text-text">
+      <header className="mb-3 flex items-start gap-2.5">
+        <span
+          aria-hidden
+          className="mt-[5px] size-2 shrink-0 rounded-full"
+          style={
+            ZONE_DOT[phase]
+              ? { background: ZONE_DOT[phase] }
+              : { border: "1.5px solid var(--text-tertiary)" }
+          }
+        />
+        <div className="min-w-0 flex-1">
+          <h3 className="font-mono text-[13.5px] font-extrabold tracking-[0.1em] text-text">
             {ZONE_TITLE[phase]}
           </h3>
           <p className="mt-0.5 text-[12.5px] text-text-muted">{ZONE_COPY[phase]}</p>
         </div>
-        <span className="rounded-full bg-bg-element px-2.5 py-1 font-mono text-[11px] font-medium tracking-[0.08em] text-text-muted">
-          {String(images.length).padStart(2, "0")}
+        <span className="shrink-0 text-[13px] text-text-tertiary">
+          {images.length} photo{images.length === 1 ? "" : "s"}
         </span>
       </header>
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-border bg-bg px-4 py-4 text-center transition-colors hover:bg-bg-hover"
-      >
-        {uploading ? (
-          <span className="flex items-center gap-2 text-[14px] text-text-muted">
-            <Spinner /> Uploading {queue.filter((q) => q.progress >= 0).length} photo
-            {queue.filter((q) => q.progress >= 0).length === 1 ? "" : "s"}…
+      {empty && (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="mb-3 flex flex-col items-center gap-1 rounded-[14px] border-[1.5px] border-dashed border-border px-4 py-5 text-center transition-colors hover:bg-bg-hover"
+        >
+          <span className="text-[14px] text-text-muted">No photos yet</span>
+          <span className="text-[12px] text-text-tertiary">
+            Drop photos here, take one, or add from your library
           </span>
-        ) : (
-          <>
-            <span className="text-[14px] font-medium text-text">
-              Drop photos here or tap to select
-            </span>
-            <span className="text-[12px] text-text-muted">
-              JPEG, PNG or WebP · drag photos between sections to move them
-            </span>
-          </>
-        )}
-      </button>
+        </button>
+      )}
+      {uploading && (
+        <span className="mb-2 flex items-center gap-2 text-[13px] text-text-muted">
+          <Spinner /> Uploading {queue.filter((q) => q.progress >= 0).length} photo
+          {queue.filter((q) => q.progress >= 0).length === 1 ? "" : "s"}…
+        </span>
+      )}
       <input
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
         multiple
+        hidden
+        onChange={(e) => {
+          add(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
         hidden
         onChange={(e) => {
           add(Array.from(e.target.files ?? []));
@@ -302,6 +329,28 @@ export function UploadZone({
           ))}
         </ul>
       )}
+
+      <div className={`flex gap-2.5 ${empty ? "" : "mt-4"}`}>
+        <button
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          className="flex h-[46px] flex-1 items-center justify-center gap-2 rounded-[12px] bg-text text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
+        >
+          <svg width="19" height="17" viewBox="0 0 24 21" aria-hidden>
+            <rect x="1" y="4" width="22" height="16" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
+            <path d="M8 4l1.6-2.6h4.8L16 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            <circle cx="12" cy="12" r="4.4" fill="none" stroke="currentColor" strokeWidth="2" />
+          </svg>
+          Take photo
+        </button>
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="flex h-[46px] flex-1 items-center justify-center rounded-[12px] border border-border bg-bg-subtle text-[14px] font-semibold text-text transition-colors hover:bg-bg-hover"
+        >
+          Add from library
+        </button>
+      </div>
     </section>
   );
 }

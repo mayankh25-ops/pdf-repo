@@ -94,9 +94,9 @@ export function TemplateGallery({
             type="button"
             onClick={() => onToggle(def.id)}
             aria-pressed={isSelected}
-            className={`flex flex-col rounded-[14px] border p-2.5 text-left transition-colors ${
+            className={`flex flex-col rounded-[14px] border p-2.5 text-left transition-all ${
               isSelected
-                ? "border-border-strong bg-bg-subtle ring-2 ring-accent"
+                ? "border-accent bg-bg-subtle ring-1 ring-accent shadow-[0_6px_18px_rgba(217,35,46,0.12)]"
                 : "border-hairline bg-bg-subtle hover:border-border"
             }`}
           >
@@ -106,7 +106,16 @@ export function TemplateGallery({
               </DocAccent>
             </ResponsiveThumb>
             <span className="mt-2 flex items-center justify-between gap-2 px-0.5">
-              <span className="text-[12.5px] font-medium leading-tight text-text">{def.name}</span>
+              <span className="min-w-0">
+                <span className="block text-[12.5px] font-semibold leading-tight text-text">
+                  {def.name}
+                </span>
+                {def.id === "focused-card" && (
+                  <span className="mt-0.5 block text-[10px] font-bold tracking-[0.06em] text-text-tertiary">
+                    DEFAULT
+                  </span>
+                )}
+              </span>
               <span
                 aria-hidden
                 className={`flex size-6 shrink-0 items-center justify-center rounded-full border text-[13px] ${

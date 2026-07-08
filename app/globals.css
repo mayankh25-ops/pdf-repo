@@ -92,12 +92,32 @@
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
 }
 
-/* UI accent for the web app shell (home themes). Kept separate from the
-   document --accent so choosing a portal look never restyles the reports. */
+/* ---------------------------------------------------------------------------
+   Portal shell palette — matched to the mobile app design handoff
+   (Cleaning Works App .dc.html): warm #F7F6F3 canvas, white cards, red
+   #D9232E primary actions. Declared AFTER the sand aliases so it wins on
+   :root; .doc-page re-pins the sand palette below so report documents are
+   completely unaffected.
+--------------------------------------------------------------------------- */
+:root {
+  --bg: #f7f6f3; /* app canvas */
+  --bg-subtle: #ffffff; /* cards */
+  --bg-element: #ece9e3; /* sunken segmented-control track */
+  --bg-hover: #f0ede7; /* row hover / dividers */
+  --hairline: #e9e6e0; /* card borders */
+  --border: #e2ded7; /* input borders */
+  --border-strong: #1b1b1b; /* focused input */
+  --text-tertiary: #9b968e;
+  --text-muted: #6e6a63;
+  --text: #1b1b1b;
+}
+
+/* UI accent for the web app shell. Kept separate from the document --accent
+   so the portal look never restyles the reports. */
 :root,
 .dark {
-  --ui-accent: var(--accent);
-  --ui-accent-contrast: var(--accent-contrast);
+  --ui-accent: #d9232e;
+  --ui-accent-contrast: #ffffff;
 }
 
 @theme inline {
@@ -150,6 +170,19 @@ html {
    A4 = 210 × 297 mm. Each .doc-page owns its chrome; pagination is explicit.
 --------------------------------------------------------------------------- */
 .doc-page {
+  /* Documents keep the sand palette regardless of the portal shell theme.
+     Declared after the portal overrides; resolves dark via `.dark`. */
+  --bg: var(--sand-1);
+  --bg-subtle: var(--sand-2);
+  --bg-element: var(--sand-3);
+  --bg-hover: var(--sand-4);
+  --hairline: var(--sand-6);
+  --border: var(--sand-7);
+  --border-strong: var(--sand-8);
+  --text-tertiary: var(--sand-9);
+  --text-muted: var(--sand-11);
+  --text: var(--sand-12);
+
   width: 210mm;
   height: 297mm;
   position: relative;

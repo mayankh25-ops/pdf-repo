@@ -174,14 +174,37 @@ export function CompanyPicker({
               />
             </Field>
             <Field label="Brand accent">
-              <div className="flex min-h-12 items-center gap-3 rounded-[10px] border border-border bg-bg px-3">
-                <input
-                  type="color"
-                  value={editor.accent}
-                  onChange={(e) => setEditor({ ...editor, accent: e.target.value })}
-                  className="size-8 cursor-pointer rounded border-none bg-transparent p-0"
-                  aria-label="Brand accent colour"
-                />
+              <div className="flex min-h-12 flex-wrap items-center gap-3">
+                {["#D9232E", "#0F7B84", "#3A4A8C", "#B0761A", "#1B1B1B"].map((c) => {
+                  const active = editor.accent.toLowerCase() === c.toLowerCase();
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-label={`Accent ${c}`}
+                      aria-pressed={active}
+                      onClick={() => setEditor({ ...editor, accent: c })}
+                      className="size-10 rounded-full transition-shadow"
+                      style={{
+                        background: c,
+                        boxShadow: active ? `0 0 0 3px var(--bg-subtle), 0 0 0 5px ${c}` : undefined,
+                      }}
+                    />
+                  );
+                })}
+                <label
+                  className="relative flex size-10 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-dashed border-border text-[16px] text-text-muted"
+                  title="Custom colour"
+                >
+                  +
+                  <input
+                    type="color"
+                    value={editor.accent}
+                    onChange={(e) => setEditor({ ...editor, accent: e.target.value })}
+                    className="absolute inset-0 size-full cursor-pointer opacity-0"
+                    aria-label="Custom brand accent colour"
+                  />
+                </label>
                 <span className="font-mono text-[13px] text-text-muted">
                   {editor.accent.toUpperCase()}
                 </span>

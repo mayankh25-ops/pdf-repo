@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Phase, TemplateId } from "@/lib/types";
 import { PHASES } from "@/lib/types";
 import { TEMPLATES } from "@/lib/templates";
 import type { UploadedImage, WizardState } from "@/components/wizard/types";
 import { initialState, uploadFiles } from "@/components/wizard/types";
-import { Field, GhostButton, PrimaryButton, Spinner, ErrorNote, inputCls } from "@/components/wizard/ui";
+import {
+  Field,
+  GhostButton,
+  PrimaryButton,
+  SegmentedControl,
+  Spinner,
+  ErrorNote,
+  inputCls,
+} from "@/components/wizard/ui";
 import type { MovePayload } from "@/components/wizard/UploadZone";
 import { UploadZone } from "@/components/wizard/UploadZone";
 import { TemplateGallery } from "@/components/wizard/TemplateGallery";
@@ -62,6 +70,14 @@ function buildPayload(state: WizardState, profileId: string, templateId: Templat
 
 type PhotoLayout = "auto" | "columns" | "rows";
 
+/** Tinted phase-count pills, colours from the mobile design handoff. */
+const PHASE_PILL: Record<Phase, { label: string; bg: string; fg: string }> = {
+  before: { label: "BEFORE", bg: "rgba(217,35,46,0.09)", fg: "#D9232E" },
+  during: { label: "DURING", bg: "rgba(232,160,32,0.12)", fg: "#B47714" },
+  after: { label: "AFTER", bg: "rgba(30,158,87,0.10)", fg: "#1E9E57" },
+  general: { label: "NO TAG", bg: "#F0EDE7", fg: "#8B867E" },
+};
+
 export default function Home() {
   const [state, setState] = useState<WizardState>(initialState);
   const [layoutRaw, setLayoutRaw] = usePersistent("cwr-photo-layout", "auto");
@@ -82,14 +98,6 @@ export default function Home() {
   }, []);
 
   const profile = profiles.find((p) => p.id === profileId) ?? profiles[0] ?? null;
-
-  // Keep the active step chip visible in the scrollable step nav on phones.
-  const stepNavRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    stepNavRef.current
-      ?.querySelector('[data-active="true"]')
-      ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
-  }, [state.step]);
 
   const toggleTemplate = (id: TemplateId) =>
     setState((s) => ({
@@ -154,7 +162,7 @@ export default function Home() {
         </div>
         <Link
           href="/reports"
-          className="shrink-0 rounded-[10px] border border-border bg-bg px-3 py-2 text-[13px] font-medium text-text transition-colors hover:bg-bg-hover sm:px-4 sm:text-[14px]"
+          className="shrink-0 rounded-[12px] border border-border bg-bg-subtle px-3 py-2 text-[13px] font-semibold text-text transition-colors hover:bg-bg-hover sm:px-4 sm:text-[14px]"
         >
           Reports
         </Link>
@@ -176,33 +184,49 @@ export default function Home() {
         />
       </div>
 
-      {/* Step indicator */}
-      <nav
-        ref={stepNavRef}
-        aria-label="Steps"
-        className="mb-8 flex items-center gap-1 overflow-x-auto border-b border-hairline pb-4"
-      >
+      {/* Step indicator — numbered circles with connector lines (design handoff) */}
+      <nav aria-label="Steps" className="mb-8 flex items-center gap-2 border-b border-hairline pb-5">
         {STEPS.map((label, i) => {
           const n = (i + 1) as WizardState["step"];
           const active = state.step === n;
           const done = state.step > n;
           return (
-            <button
-              key={label}
-              type="button"
-              data-active={active || undefined}
-              onClick={() => (done || active ? go(n) : undefined)}
-              className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[13px] transition-colors sm:gap-2 sm:px-4 sm:text-[14px] ${
-                active
-                  ? "bg-accent font-medium text-accent-contrast"
-                  : done
-                    ? "text-text hover:bg-bg-hover"
-                    : "cursor-default text-text-tertiary"
-              }`}
-            >
-              <span className="font-mono text-[11px]">{n}</span>
-              {label}
-            </button>
+            <Fragment key={label}>
+              {i > 0 && (
+                <div
+                  aria-hidden
+                  className={`h-0.5 min-w-3 flex-1 rounded-full ${state.step > i ? "bg-text" : "bg-border"}`}
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => (done || active ? go(n) : undefined)}
+                className={`flex min-h-10 shrink-0 items-center gap-2 ${done ? "" : "cursor-default"}`}
+              >
+                <span
+                  className={`flex size-[26px] items-center justify-center rounded-full text-[13px] font-bold ${
+                    done
+                      ? "bg-text text-white"
+                      : active
+                        ? "bg-accent text-accent-contrast"
+                        : "bg-bg-element text-text-tertiary"
+                  }`}
+                >
+                  {done ? "✓" : n}
+                </span>
+                <span
+                  className={
+                    active
+                      ? "text-[13px] font-bold text-text"
+                      : done
+                        ? "hidden text-[13px] font-medium text-text sm:inline"
+                        : "hidden text-[13px] text-text-tertiary sm:inline"
+                  }
+                >
+                  {label}
+                </span>
+              </button>
+            </Fragment>
           );
         })}
       </nav>
@@ -222,28 +246,16 @@ export default function Home() {
             title="Add photo evidence"
             sub="Before and after tell the story; during is optional and simply skipped if empty. Drag photos to reorder, or drag them between sections if one landed in the wrong place."
           />
-          <div className="mb-4 flex w-fit items-center gap-1 rounded-[12px] border border-border bg-bg p-1">
-            {(
-              [
-                ["auto", "Auto"],
-                ["columns", "Columns"],
-                ["rows", "Rows"],
-              ] as [PhotoLayout, string][]
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setPhotoLayout(value)}
-                aria-pressed={photoLayout === value}
-                className={`min-h-10 rounded-[9px] px-4 text-[14px] font-medium transition-colors ${
-                  photoLayout === value
-                    ? "bg-accent text-accent-contrast"
-                    : "text-text-muted hover:bg-bg-hover"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="mb-4">
+            <SegmentedControl
+              options={[
+                { value: "auto", label: "Auto" },
+                { value: "columns", label: "Columns" },
+                { value: "rows", label: "Rows" },
+              ]}
+              value={photoLayout}
+              onChange={(v) => setPhotoLayout(v as PhotoLayout)}
+            />
           </div>
           <div
             className={
@@ -660,7 +672,7 @@ function StepGenerate({
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7">
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[14px] sm:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[14px]">
             <div>
               <dt className="text-text-muted">Building</dt>
               <dd className="mt-0.5 font-medium text-text">{state.building || "—"}</dd>
@@ -669,24 +681,32 @@ function StepGenerate({
               <dt className="text-text-muted">Date</dt>
               <dd className="mt-0.5 font-mono text-[13px] text-text">{state.date}</dd>
             </div>
-            <div>
-              <dt className="text-text-muted">Photos (B · D · A · No tag)</dt>
-              <dd className="mt-0.5 font-mono text-[13px] text-text">{counts.join(" · ")}</dd>
-            </div>
           </dl>
 
-          <label
-            className={`mt-6 flex items-start gap-3 rounded-[10px] border border-hairline bg-bg p-4 ${
-              pairable ? "cursor-pointer" : "opacity-55"
+          {/* Tinted phase-count pills (design handoff) */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {PHASES.map((p) => (
+              <span
+                key={p}
+                className="flex h-7 items-center gap-1.5 rounded-full px-2.5"
+                style={{ background: PHASE_PILL[p].bg }}
+              >
+                <span
+                  className="text-[10px] font-extrabold tracking-[0.08em]"
+                  style={{ color: PHASE_PILL[p].fg }}
+                >
+                  {PHASE_PILL[p].label}
+                </span>
+                <span className="text-[13px] font-bold text-text">{state.photos[p].length}</span>
+              </span>
+            ))}
+          </div>
+
+          <div
+            className={`mt-6 flex items-start justify-between gap-3 rounded-[12px] border border-hairline bg-bg p-4 ${
+              pairable ? "" : "opacity-55"
             }`}
           >
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4 accent-current"
-              disabled={!pairable}
-              checked={state.paired && pairable}
-              onChange={(e) => set("paired", e.target.checked)}
-            />
             <span>
               <span className="block text-[14px] font-medium text-text">
                 Paired before / after comparison
@@ -697,7 +717,24 @@ function StepGenerate({
                   : `Needs matching before/after counts (currently ${counts[0]} / ${counts[2]}).`}
               </span>
             </span>
-          </label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={state.paired && pairable}
+              aria-label="Paired before / after comparison"
+              disabled={!pairable}
+              onClick={() => set("paired", !(state.paired && pairable))}
+              className={`relative mt-0.5 h-[30px] w-[50px] shrink-0 rounded-full transition-colors ${
+                state.paired && pairable ? "bg-accent" : "bg-border"
+              }`}
+            >
+              <span
+                className={`absolute top-[2px] size-[26px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] transition-all ${
+                  state.paired && pairable ? "left-[22px]" : "left-[2px]"
+                }`}
+              />
+            </button>
+          </div>
 
           <div className="mt-5">
             <Field label="Remarks" optional>

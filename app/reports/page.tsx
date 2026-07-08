@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { inputCls } from "@/components/wizard/ui";
+import { SegmentedControl, inputCls } from "@/components/wizard/ui";
 
 interface ReportRow {
   reportNo: string;
@@ -50,31 +50,21 @@ export default function ReportsPage() {
         </div>
         <Link
           href="/"
-          className="rounded-[10px] border border-border bg-bg px-4 py-2 text-[14px] font-medium text-text transition-colors hover:bg-bg-hover"
+          className="rounded-[12px] bg-accent px-4 py-2.5 text-[14px] font-semibold text-accent-contrast transition-opacity hover:opacity-90"
         >
           New report
         </Link>
       </header>
 
-      <div className="mb-4 flex w-fit items-center gap-1 rounded-[12px] border border-border bg-bg p-1">
-        {(
-          [
-            [true, "My reports"],
-            [false, "All reports"],
-          ] as [boolean, string][]
-        ).map(([value, label]) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setMine(value)}
-            aria-pressed={mine === value}
-            className={`min-h-10 rounded-[9px] px-4 text-[14px] font-medium transition-colors ${
-              mine === value ? "bg-accent text-accent-contrast" : "text-text-muted hover:bg-bg-hover"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-4">
+        <SegmentedControl
+          options={[
+            { value: "mine", label: "My reports" },
+            { value: "all", label: "All reports" },
+          ]}
+          value={mine ? "mine" : "all"}
+          onChange={(v) => setMine(v === "mine")}
+        />
       </div>
       <input
         className={inputCls}

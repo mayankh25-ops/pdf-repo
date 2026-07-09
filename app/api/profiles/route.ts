@@ -30,7 +30,12 @@ const toClient = (p: Awaited<ReturnType<typeof listProfiles>>[number]) => ({
 });
 
 export async function GET() {
-  return NextResponse.json({ profiles: (await listProfiles()).map(toClient) });
+  return NextResponse.json({
+    profiles: (await listProfiles()).map(toClient),
+    // Without CWR_DATA_DIR the store lives on the container's temp disk and
+    // every deploy erases reports, uploads, brands and accounts.
+    ephemeralStorage: !process.env.CWR_DATA_DIR && process.env.NODE_ENV === "production",
+  });
 }
 
 /**

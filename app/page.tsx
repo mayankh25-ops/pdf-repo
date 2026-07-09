@@ -83,13 +83,16 @@ export default function Home() {
   const [layoutRaw, setLayoutRaw] = usePersistent("cwr-photo-layout", "auto");
   const [profileId, setProfileId] = usePersistent("cwr-profile", "focused-fm");
   const [profiles, setProfiles] = useState<CompanyProfileView[]>([]);
+  const [ephemeral, setEphemeral] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/profiles")
       .then((res) => res.json())
       .then((json) => {
-        if (!cancelled && Array.isArray(json.profiles)) setProfiles(json.profiles);
+        if (cancelled) return;
+        if (Array.isArray(json.profiles)) setProfiles(json.profiles);
+        setEphemeral(json.ephemeralStorage === true);
       })
       .catch(() => {});
     return () => {
@@ -167,6 +170,18 @@ export default function Home() {
           Reports
         </Link>
       </header>
+
+      {ephemeral && (
+        <div className="mb-4 flex items-start gap-3 rounded-[14px] border border-[#EFD9A4] bg-[#FBF3E2] p-3.5">
+          <span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full bg-[#E8A020]" />
+          <p className="text-[13.5px] leading-relaxed text-[#7A5A12]">
+            <strong>Storage is temporary.</strong> Reports, photos, brands and accounts are erased
+            on every deploy or restart. In Railway, add a Volume mounted at{" "}
+            <code className="font-mono">/data</code> and set the variable{" "}
+            <code className="font-mono">CWR_DATA_DIR=/data</code>, then redeploy.
+          </p>
+        </div>
+      )}
 
       <div className="mb-6">
         <CompanyPicker

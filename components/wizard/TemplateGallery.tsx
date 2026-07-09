@@ -96,7 +96,7 @@ export function TemplateGallery({
             aria-pressed={isSelected}
             className={`flex flex-col rounded-[14px] border p-2.5 text-left transition-all ${
               isSelected
-                ? "border-accent bg-bg-subtle ring-1 ring-accent shadow-[0_6px_18px_rgba(217,35,46,0.12)]"
+                ? "border-accent bg-bg-subtle ring-1 ring-accent shadow-[0_6px_18px_rgba(37,99,235,0.14)]"
                 : "border-hairline bg-bg-subtle hover:border-border"
             }`}
           >

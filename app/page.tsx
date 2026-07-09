@@ -490,6 +490,137 @@ function SingleUpload({
   );
 }
 
+/** Building dropdown backed by the shared server-side list (+ add / − delete). */
+function BuildingSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [buildings, setBuildings] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/buildings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled && Array.isArray(json.buildings)) setBuildings(json.buildings);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const mutate = async (body: { add?: string; remove?: string }) => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/buildings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.buildings)) setBuildings(json.buildings);
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Keep a previously-typed / deleted value selectable so drafts stay valid.
+  const options = value && !buildings.includes(value) ? [value, ...buildings] : buildings;
+
+  return (
+    <Field label="Building name">
+      <div className="flex gap-2">
+        <select
+          className={`${inputCls} min-w-0 flex-1 appearance-none`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required
+        >
+          <option value="" disabled>
+            Select building…
+          </option>
+          {options.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          title="Add a building"
+          aria-label="Add a building"
+          onClick={() => {
+            setAdding((a) => !a);
+            setNewName("");
+          }}
+          className="flex size-12 shrink-0 items-center justify-center rounded-[12px] border border-border bg-bg-subtle text-[20px] leading-none text-text transition-colors hover:bg-bg-hover"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          title="Remove selected building from the list"
+          aria-label="Remove selected building from the list"
+          disabled={!value || busy}
+          onClick={async () => {
+            const removed = value;
+            if (await mutate({ remove: removed })) onChange("");
+          }}
+          className="flex size-12 shrink-0 items-center justify-center rounded-[12px] border border-border bg-bg-subtle text-[20px] leading-none text-text transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          −
+        </button>
+      </div>
+      {adding && (
+        <div className="mt-2 flex gap-2">
+          <input
+            className={`${inputCls} min-w-0 flex-1`}
+            value={newName}
+            maxLength={160}
+            placeholder="New building name"
+            autoFocus
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const name = newName.trim();
+                if (name && (await mutate({ add: name }))) {
+                  onChange(name);
+                  setAdding(false);
+                }
+              }
+            }}
+          />
+          <button
+            type="button"
+            disabled={!newName.trim() || busy}
+            onClick={async () => {
+              const name = newName.trim();
+              if (name && (await mutate({ add: name }))) {
+                onChange(name);
+                setAdding(false);
+              }
+            }}
+            className="shrink-0 rounded-[12px] bg-accent px-4 text-[14px] font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
+        </div>
+      )}
+    </Field>
+  );
+}
+
 function StepDetails({
   state,
   set,
@@ -532,16 +663,7 @@ function StepDetails({
               />
             </Field>
           </div>
-          <Field label="Building name">
-            <input
-              className={inputCls}
-              value={state.building}
-              maxLength={160}
-              placeholder="e.g. Riverside House"
-              onChange={(e) => set("building", e.target.value)}
-              required
-            />
-          </Field>
+          <BuildingSelect value={state.building} onChange={(v) => set("building", v)} />
           <Field label="Report date">
             <input
               type="date"

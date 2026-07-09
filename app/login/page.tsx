@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ErrorNote, Field, PrimaryButton, Spinner, inputCls } from "@/components/wizard/ui";
 
@@ -16,6 +16,7 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const post = async (url: string, body: object) => {
     const res = await fetch(url, {
@@ -117,18 +118,29 @@ function LoginForm() {
             type={mode === "signin" ? "text" : "email"}
             autoComplete="username"
             autoCapitalize="none"
+            autoFocus={mode === "signin"}
+            enterKeyHint={mode === "forgot" ? "go" : "next"}
             onChange={(e) => setUsername(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter on the username jumps straight to the password field.
+              if (e.key === "Enter" && mode !== "forgot") {
+                e.preventDefault();
+                passwordRef.current?.focus();
+              }
+            }}
             required
           />
         </Field>
         {mode !== "forgot" && (
           <Field label="Password">
             <input
+              ref={passwordRef}
               type="password"
               className={inputCls}
               value={password}
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
               minLength={mode === "register" ? 8 : undefined}
+              enterKeyHint="go"
               onChange={(e) => setPassword(e.target.value)}
               required
             />

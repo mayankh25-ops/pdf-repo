@@ -116,7 +116,7 @@
    so the portal look never restyles the reports. */
 :root,
 .dark {
-  --ui-accent: #d9232e;
+  --ui-accent: #2563eb;
   --ui-accent-contrast: #ffffff;
 }
 

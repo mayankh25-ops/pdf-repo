@@ -257,6 +257,27 @@ export async function getProfile(profileId: string): Promise<CompanyProfile | nu
 }
 
 /* ---------------------------------------------------------------------------
+   Building list — shared dropdown entries for the report form, so the team
+   never has to retype building names.
+--------------------------------------------------------------------------- */
+
+const BUILDINGS_FILE = path.join(ROOT, "buildings.json");
+const DEFAULT_BUILDINGS = ["Aurora Melbourne Central", "The Muse"];
+
+export async function listBuildings(): Promise<string[]> {
+  try {
+    const list: string[] = JSON.parse(await readFile(BUILDINGS_FILE, "utf8"));
+    return Array.isArray(list) ? list : DEFAULT_BUILDINGS;
+  } catch {
+    return DEFAULT_BUILDINGS;
+  }
+}
+
+export async function saveBuildings(list: string[]): Promise<void> {
+  await writeFile(BUILDINGS_FILE, JSON.stringify(list));
+}
+
+/* ---------------------------------------------------------------------------
    Report registry — every generated report gets a sequential number
    (e.g. 2026-0014) and stays on the portal for later search & download.
 --------------------------------------------------------------------------- */

@@ -312,7 +312,6 @@ export function FocusedCoverCard({ r }: { r: ReportView }) {
           <span style={{ ...mono, color: "var(--text-muted)" }}>
             {r.preparedBy ? `PREPARED BY · ${r.preparedBy.toUpperCase()}` : ""}
           </span>
-          <span style={{ ...mono, color: "var(--text-muted)" }}>BEFORE · DURING · AFTER</span>
         </div>
       </div>
     </FocusedPage>

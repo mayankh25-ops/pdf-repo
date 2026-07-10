@@ -48,12 +48,20 @@ export default function ReportsPage() {
             Stored reports
           </h1>
         </div>
-        <Link
-          href="/"
-          className="rounded-[12px] bg-accent px-4 py-2.5 text-[14px] font-semibold text-accent-contrast transition-opacity hover:opacity-90"
-        >
-          New report
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/admin"
+            className="rounded-[12px] border border-border bg-bg-subtle px-4 py-2.5 text-[14px] font-semibold text-text transition-colors hover:bg-bg-hover"
+          >
+            Admin
+          </Link>
+          <Link
+            href="/"
+            className="rounded-[12px] bg-accent px-4 py-2.5 text-[14px] font-semibold text-accent-contrast transition-opacity hover:opacity-90"
+          >
+            New report
+          </Link>
+        </div>
       </header>
 
       <div className="mb-4">

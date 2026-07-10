@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser, newResetToken, saveUser } from "@/lib/store";
+import { sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -25,20 +26,11 @@ export async function POST(req: NextRequest) {
       const proto = req.headers.get("x-forwarded-proto") ?? "https";
       const host = req.headers.get("host") ?? "";
       const link = `${proto}://${host}/reset?email=${encodeURIComponent(user.email)}&token=${user.resetToken}`;
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: process.env.EMAIL_FROM ?? "reports@example.com",
-          to: [user.email],
-          subject: "Reset your report portal password",
-          text: `Hi ${user.name},\n\nReset your password using this link (valid for 1 hour):\n${link}\n\nIf you didn't request this, you can ignore this email.`,
-        }),
-      });
-      if (!res.ok) console.error("[forgot] email send failed", res.status);
+      await sendEmail(
+        user.email,
+        "Reset your report portal password",
+        `Hi ${user.name},\n\nReset your password using this link (valid for 1 hour):\n${link}\n\nIf you didn't request this, you can ignore this email.`,
+      );
     }
   }
   return NextResponse.json({ ok: true, sent: emailConfigured });

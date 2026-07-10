@@ -341,6 +341,9 @@ export interface UserRecord {
   salt: string;
   passHash: string;
   createdAt: string;
+  /** New sign-ups start "pending" until the admin approves them.
+   *  Records without a status (created before approvals existed) are active. */
+  status?: "pending" | "active" | "rejected";
   resetToken?: string;
   resetExpires?: number;
 }
@@ -361,6 +364,34 @@ export async function getUser(email: string): Promise<UserRecord | null> {
 
 export async function saveUser(user: UserRecord): Promise<void> {
   await writeFile(userFile(user.email), JSON.stringify(user));
+}
+
+export async function listUsers(): Promise<UserRecord[]> {
+  const users: UserRecord[] = [];
+  try {
+    for (const file of await readdir(DIRS.users)) {
+      if (!file.endsWith(".json")) continue;
+      try {
+        users.push(JSON.parse(await readFile(path.join(DIRS.users, file), "utf8")));
+      } catch {
+        /* skip malformed */
+      }
+    }
+  } catch {
+    /* dir missing */
+  }
+  return users.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}
+
+export async function setUserStatus(
+  email: string,
+  status: "active" | "rejected",
+): Promise<UserRecord | null> {
+  const user = await getUser(email);
+  if (!user) return null;
+  user.status = status;
+  await saveUser(user);
+  return user;
 }
 
 export const newSalt = () => crypto.randomBytes(12).toString("hex");

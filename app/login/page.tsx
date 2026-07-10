@@ -43,8 +43,12 @@ function LoginForm() {
       }
       if (mode === "register") {
         await post("/api/register", { name, email: username, password });
-        router.replace("/");
-        router.refresh();
+        setMode("signin");
+        setPassword("");
+        setNotice(
+          "Request sent — the admin has been notified. You'll be able to sign in as soon as your account is approved.",
+        );
+        setBusy(false);
         return;
       }
       const json = await post("/api/forgot", { email: username });

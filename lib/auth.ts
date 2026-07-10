@@ -56,6 +56,14 @@ export const isAdminCredentials = (user: string, pass: string) =>
 
 export const ADMIN_EMAIL = () => adminUser();
 
+/** Signed token for one-click approve/reject links sent to the admin's email. */
+export async function approvalToken(
+  email: string,
+  action: "approve" | "reject",
+): Promise<string> {
+  return hmac(`user-approval:${action}:${email.trim().toLowerCase()}`);
+}
+
 export async function hashPassword(password: string, salt: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", enc.encode(`${salt}:${password}:cwr`));
   return Array.from(new Uint8Array(digest))

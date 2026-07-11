@@ -44,7 +44,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`${full ? "w-full " : ""}inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[14px] bg-accent px-6 py-3 text-[16px] font-semibold text-accent-contrast shadow-[0_10px_24px_rgba(37,99,235,0.25)] transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:bg-bg-element disabled:text-text-tertiary disabled:shadow-none`}
+      className={`${full ? "w-full " : ""}inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[14px] bg-accent px-6 py-3 text-[16px] font-semibold text-accent-contrast shadow-[0_10px_24px_rgba(0,122,255,0.25)] transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:bg-bg-element disabled:text-text-tertiary disabled:shadow-none`}
     >
       {children}
     </button>

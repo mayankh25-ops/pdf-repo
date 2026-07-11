@@ -112,11 +112,12 @@
   --text: #1b1b1b;
 }
 
-/* UI accent for the web app shell. Kept separate from the document --accent
-   so the portal look never restyles the reports. */
+/* UI accent for the web app shell — iOS system blue, per Apple's Human
+   Interface Guidelines tint colour. Kept separate from the document
+   --accent so the portal look never restyles the reports. */
 :root,
 .dark {
-  --ui-accent: #2563eb;
+  --ui-accent: #007aff;
   --ui-accent-contrast: #ffffff;
 }
 

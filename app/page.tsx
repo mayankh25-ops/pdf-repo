@@ -647,40 +647,46 @@ function BuildingSelect({
         </button>
       </div>
       {adding && (
-        <div className="mt-2 flex flex-col gap-2">
-          <div className="flex gap-2">
-            <input
-              className={`${inputCls} min-w-0 flex-1`}
-              value={newName}
-              maxLength={160}
-              placeholder="New building name"
-              autoFocus
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void save();
-                }
-              }}
-            />
-            <button
-              type="button"
-              disabled={!newName.trim() || busy}
-              onClick={save}
-              className="shrink-0 rounded-[12px] bg-accent px-4 text-[14px] font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-40"
-            >
-              {busy ? "Saving…" : "Save"}
-            </button>
-          </div>
+        <div className="step-enter mt-2 flex flex-col gap-3 rounded-[14px] border border-hairline bg-bg p-3.5">
+          <p className="text-[13px] font-semibold text-text">New building</p>
+          <input
+            className={`${inputCls} min-w-0`}
+            value={newName}
+            maxLength={160}
+            placeholder="Building name"
+            autoFocus
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (photoFile) void save();
+                else photoRef.current?.click();
+              }
+            }}
+          />
+          {/* The building photo is part of adding a building — it becomes the
+              report hero every time this building is selected. */}
           <button
             type="button"
             onClick={() => photoRef.current?.click()}
-            className="flex min-h-11 items-center justify-between gap-3 rounded-[12px] border border-dashed border-border bg-bg-subtle px-3.5 text-[13.5px] text-text-muted transition-colors hover:bg-bg-hover"
+            className="relative flex h-28 w-full items-center justify-center overflow-hidden rounded-[12px] border border-dashed border-border bg-bg-subtle text-[14px] text-text-muted transition-colors hover:bg-bg-hover"
           >
-            <span className="truncate">
-              {photoFile ? photoFile.name : "Building photo (optional) — used on every report for this building"}
-            </span>
-            <span className="shrink-0 font-semibold text-text">{photoFile ? "Change" : "Add"}</span>
+            {photoFile ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={URL.createObjectURL(photoFile)} alt="" className="size-full object-cover" />
+                <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-3 py-1.5 text-[12px] font-medium text-white">
+                  ⟳ Change
+                </span>
+              </>
+            ) : (
+              <span className="flex flex-col items-center gap-0.5 px-4 text-center">
+                <span className="font-medium text-text">Add the building photo</span>
+                <span className="text-[12px]">
+                  Shown on every report for this building — required
+                </span>
+              </span>
+            )}
           </button>
           <input
             ref={photoRef}
@@ -689,6 +695,32 @@ function BuildingSelect({
             hidden
             onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
           />
+          <div className="flex items-center justify-end gap-3">
+            {(!newName.trim() || !photoFile) && (
+              <span className="text-[12.5px] text-text-muted">
+                {!newName.trim() ? "Name required" : "Photo required"}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setAdding(false);
+                setNewName("");
+                setPhotoFile(null);
+              }}
+              className="min-h-11 rounded-[12px] px-3 text-[14px] font-medium text-text-muted hover:bg-bg-hover"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!newName.trim() || !photoFile || busy}
+              onClick={save}
+              className="min-h-11 shrink-0 rounded-[12px] bg-accent px-4 text-[14px] font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-40"
+            >
+              {busy ? "Saving…" : "Save building"}
+            </button>
+          </div>
         </div>
       )}
     </Field>

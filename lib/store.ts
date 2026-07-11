@@ -139,11 +139,12 @@ export async function cleanupExpired() {
       }
     }
     const stale = Date.now() - 2 * DOWNLOAD_TTL_MS;
-    // Profile logos and brand building photos live in uploads but must
-    // never be swept.
-    const keep = new Set(
-      (await listProfiles()).flatMap((p) => [p.logoId, p.buildingId]).filter(Boolean),
-    );
+    // Profile logos, brand building photos and per-building default photos
+    // live in uploads but must never be swept.
+    const keep = new Set([
+      ...(await listProfiles()).flatMap((p) => [p.logoId, p.buildingId]),
+      ...(await listBuildings()).map((b) => b.photoId),
+    ].filter(Boolean));
     for (const dir of [DIRS.uploads, DIRS.jobs]) {
       for (const file of await readdir(dir)) {
         if (keep.has(file.replace(/\.[^.]+$/, ""))) continue;
@@ -262,18 +263,34 @@ export async function getProfile(profileId: string): Promise<CompanyProfile | nu
 --------------------------------------------------------------------------- */
 
 const BUILDINGS_FILE = path.join(ROOT, "buildings.json");
-const DEFAULT_BUILDINGS = ["Aurora Melbourne Central", "The Muse"];
 
-export async function listBuildings(): Promise<string[]> {
+export interface BuildingEntry {
+  name: string;
+  /** optional default hero photo for reports on this building (upload id) */
+  photoId?: string;
+  photoWidth?: number;
+  photoHeight?: number;
+}
+
+const DEFAULT_BUILDINGS: BuildingEntry[] = [
+  { name: "Aurora Melbourne Central" },
+  { name: "The Muse" },
+];
+
+export async function listBuildings(): Promise<BuildingEntry[]> {
   try {
-    const list: string[] = JSON.parse(await readFile(BUILDINGS_FILE, "utf8"));
-    return Array.isArray(list) ? list : DEFAULT_BUILDINGS;
+    const list: unknown = JSON.parse(await readFile(BUILDINGS_FILE, "utf8"));
+    if (!Array.isArray(list)) return DEFAULT_BUILDINGS;
+    // Migrate the earlier plain-string format transparently.
+    return list
+      .map((b) => (typeof b === "string" ? { name: b } : (b as BuildingEntry)))
+      .filter((b) => b && typeof b.name === "string" && b.name);
   } catch {
     return DEFAULT_BUILDINGS;
   }
 }
 
-export async function saveBuildings(list: string[]): Promise<void> {
+export async function saveBuildings(list: BuildingEntry[]): Promise<void> {
   await writeFile(BUILDINGS_FILE, JSON.stringify(list));
 }
 

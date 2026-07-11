@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { TEMPLATES } from "@/lib/templates";
+import { TEMPLATES, getTemplate } from "@/lib/templates";
 import type { TemplateId } from "@/lib/types";
-import type { ReportView } from "@/lib/sample";
+import type { PhotoView, ReportView } from "@/lib/sample";
 import { sampleReport } from "@/lib/sample";
 import { Cover } from "@/components/report/covers";
-import { DocAccent } from "@/components/report/ReportDocument";
+import { DocAccent, buildDocumentPages } from "@/components/report/ReportDocument";
 import type { CompanyProfileView } from "./CompanyPicker";
 import type { WizardState } from "./types";
 
@@ -30,11 +30,13 @@ export function PageThumb({ width, children }: { width: number; children: React.
   );
 }
 
-/** Builds the preview data: the user's real details and photos, sample fallback. */
+/** Builds the preview data: the user's real details and photos, sample fallback.
+ *  `hero` is the selected building's default photo, if it has one. */
 export function previewView(
   state: WizardState,
   templateId: TemplateId,
   profile?: CompanyProfileView | null,
+  hero?: PhotoView | null,
 ): ReportView {
   const sample = sampleReport(templateId);
   return {
@@ -52,7 +54,7 @@ export function previewView(
     company: profile
       ? { name: profile.name, accent: profile.accent, logoScale: profile.logoScale }
       : sample.company,
-    buildingPhoto: state.buildingPhoto ?? profile?.building ?? sample.buildingPhoto,
+    buildingPhoto: state.buildingPhoto ?? hero ?? profile?.building ?? sample.buildingPhoto,
     logo: profile ? { ...profile.logo, caption: undefined } : sample.logo,
     photos: {
       before: state.photos.before.length ? state.photos.before : sample.photos.before,
@@ -64,6 +66,106 @@ export function previewView(
 }
 
 /**
+ * The template step: one big preview of the current (default) template with
+ * ◀ ▶ arrows to flip through every page of the compiled report. The full
+ * multi-select gallery stays hidden behind "Use a different template".
+ */
+export function TemplatePreview({
+  state,
+  profile,
+  hero,
+  selected,
+  onToggle,
+}: {
+  state: WizardState;
+  profile?: CompanyProfileView | null;
+  hero?: PhotoView | null;
+  selected: TemplateId[];
+  onToggle: (id: TemplateId) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  // Page index keyed by template so switching templates restarts at the cover.
+  const [pager, setPager] = useState<{ templateId: TemplateId | null; idx: number }>({
+    templateId: null,
+    idx: 0,
+  });
+  const templateId = selected[0] ?? "focused-card";
+  const view = useMemo(
+    () => previewView(state, templateId, profile, hero),
+    [state, templateId, profile, hero],
+  );
+  const pages = useMemo(() => buildDocumentPages(view), [view]);
+  const idx =
+    pager.templateId === templateId ? Math.min(pager.idx, pages.length - 1) : 0;
+  const setPageIdx = (next: (i: number) => number) =>
+    setPager({ templateId, idx: next(idx) });
+
+  const arrowCls =
+    "flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-bg-subtle text-[16px] text-text shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-colors hover:bg-bg-hover disabled:opacity-30 disabled:shadow-none";
+
+  return (
+    <div>
+      <div className="mx-auto flex max-w-md items-center gap-2.5 sm:gap-4">
+        <button
+          type="button"
+          aria-label="Previous page"
+          disabled={idx === 0}
+          onClick={() => setPageIdx((i) => Math.max(0, i - 1))}
+          className={arrowCls}
+        >
+          ◀
+        </button>
+        <div className="min-w-0 flex-1">
+          <ResponsiveThumb>
+            <DocAccent r={view}>{pages[idx]}</DocAccent>
+          </ResponsiveThumb>
+        </div>
+        <button
+          type="button"
+          aria-label="Next page"
+          disabled={idx >= pages.length - 1}
+          onClick={() => setPageIdx((i) => Math.min(pages.length - 1, i + 1))}
+          className={arrowCls}
+        >
+          ▶
+        </button>
+      </div>
+
+      <p className="mt-3 text-center text-[13px] text-text-muted">
+        <span className="font-semibold text-text">{getTemplate(templateId).name}</span>
+        {" · "}Page {idx + 1} of {pages.length}
+        {selected.length > 1 && (
+          <span> · {selected.length} templates selected</span>
+        )}
+      </p>
+
+      <div className="mt-5 text-center">
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          aria-expanded={expanded}
+          className="min-h-11 rounded-[12px] border border-border bg-bg-subtle px-4 text-[14px] font-semibold text-text transition-colors hover:bg-bg-hover"
+        >
+          {expanded ? "Hide templates ▴" : "Use a different template ▾"}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="step-enter mt-4">
+          <TemplateGallery
+            state={state}
+            profile={profile}
+            hero={hero}
+            selected={selected}
+            onToggle={onToggle}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Template gallery: a grid of first-page (cover) previews rendered with the
  * user's real content. Tap a card to select it — multi-select is allowed; the
  * full compiled report is shown on the final step.
@@ -71,17 +173,19 @@ export function previewView(
 export function TemplateGallery({
   state,
   profile,
+  hero,
   selected,
   onToggle,
 }: {
   state: WizardState;
   profile?: CompanyProfileView | null;
+  hero?: PhotoView | null;
   selected: TemplateId[];
   onToggle: (id: TemplateId) => void;
 }) {
   const views = useMemo(
-    () => TEMPLATES.map((t) => ({ def: t, view: previewView(state, t.id, profile) })),
-    [state, profile],
+    () => TEMPLATES.map((t) => ({ def: t, view: previewView(state, t.id, profile, hero) })),
+    [state, profile, hero],
   );
 
   return (

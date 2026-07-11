@@ -3,7 +3,14 @@ import type { Phase, ReportData, TemplateId } from "@/lib/types";
 import { renderPdf } from "@/lib/pdf";
 import { renderDocx } from "@/lib/docx";
 import { AUTH_COOKIE, verifySessionToken } from "@/lib/auth";
-import { getProfile, nextReportNo, registerReport, saveJob, saveOutput } from "@/lib/store";
+import {
+  getProfile,
+  listBuildings,
+  nextReportNo,
+  registerReport,
+  saveJob,
+  saveOutput,
+} from "@/lib/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -120,8 +127,21 @@ export async function POST(req: NextRequest) {
         width: profile.logoWidth,
         height: profile.logoHeight,
       };
-      // No per-report hero? Fall back to the brand's building photo.
-      if (!report.buildingPhoto && profile.buildingId) {
+    }
+
+    // No per-report hero? Prefer the selected building's default photo,
+    // then the brand's generic building photo.
+    if (!report.buildingPhoto) {
+      const entry = (await listBuildings()).find(
+        (b) => b.name.toLowerCase() === report.building.toLowerCase(),
+      );
+      if (entry?.photoId) {
+        report.buildingPhoto = {
+          id: entry.photoId,
+          width: entry.photoWidth ?? 0,
+          height: entry.photoHeight ?? 0,
+        };
+      } else if (profile?.buildingId) {
         report.buildingPhoto = {
           id: profile.buildingId,
           width: profile.buildingWidth ?? 0,

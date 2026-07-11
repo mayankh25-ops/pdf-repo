@@ -18,7 +18,7 @@ import {
 } from "@/components/wizard/ui";
 import type { MovePayload } from "@/components/wizard/UploadZone";
 import { UploadZone } from "@/components/wizard/UploadZone";
-import { TemplateGallery } from "@/components/wizard/TemplateGallery";
+import { TemplatePreview } from "@/components/wizard/TemplateGallery";
 import type { CompanyProfileView } from "@/components/wizard/CompanyPicker";
 import { CompanyPicker } from "@/components/wizard/CompanyPicker";
 import { usePersistent } from "@/components/wizard/usePersistent";
@@ -85,6 +85,20 @@ export default function Home() {
   const [profiles, setProfiles] = useState<CompanyProfileView[]>([]);
   const [ephemeral, setEphemeral] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
+  const [buildings, setBuildings] = useState<BuildingView[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/buildings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled && Array.isArray(json.buildings)) setBuildings(json.buildings);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +116,8 @@ export default function Home() {
   }, []);
 
   const profile = profiles.find((p) => p.id === profileId) ?? profiles[0] ?? null;
+  // The selected building's default photo — the report hero unless overridden.
+  const buildingHero = buildings.find((b) => b.name === state.building)?.photo ?? null;
 
   const toggleTemplate = (id: TemplateId) =>
     setState((s) => ({
@@ -283,6 +299,8 @@ export default function Home() {
           onNext={() => go(2)}
           canNext={canLeaveStep1}
           profile={profile}
+          buildings={buildings}
+          onBuildings={setBuildings}
         />
       )}
       {state.step === 2 && (
@@ -339,12 +357,13 @@ export default function Home() {
       {state.step === 3 && (
         <div className="step-enter">
           <StepHeading
-            title="Pick templates"
-            sub="First-page previews with your real photos and details. Tap to select — you can pick several and download each on the next step."
+            title="Preview your report"
+            sub="Flip through the pages with the arrows — this is exactly how it prints. Need a different look? Open the template picker below."
           />
-          <TemplateGallery
+          <TemplatePreview
             state={state}
             profile={profile}
+            hero={buildingHero}
             selected={state.templateIds}
             onToggle={toggleTemplate}
           />
@@ -464,7 +483,7 @@ function SingleUpload({
               )}
               {hero && !value && fallback && (
                 <span className="absolute left-2.5 top-2.5 rounded-full bg-black/60 px-3 py-1.5 text-[11px] font-medium tracking-[0.06em] text-white">
-                  FROM BRAND PROFILE
+                  {fallback.name === "Building default photo" ? "BUILDING PHOTO" : "FROM BRAND PROFILE"}
                 </span>
               )}
             </>
@@ -520,52 +539,68 @@ function SingleUpload({
   );
 }
 
-/** Building dropdown backed by the shared server-side list (+ add / − delete). */
+export interface BuildingView {
+  name: string;
+  /** the building's default hero photo, shown on covers automatically */
+  photo: { id: string; url: string; width: number; height: number } | null;
+}
+
+/** Building dropdown backed by the shared server-side list. + adds a
+ *  building (with its default hero photo), − deletes the selected one. */
 function BuildingSelect({
   value,
   onChange,
+  buildings,
+  onList,
 }: {
   value: string;
   onChange: (v: string) => void;
+  buildings: BuildingView[];
+  onList: (list: BuildingView[]) => void;
 }) {
-  const [buildings, setBuildings] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/buildings")
-      .then((res) => res.json())
-      .then((json) => {
-        if (!cancelled && Array.isArray(json.buildings)) setBuildings(json.buildings);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const mutate = async (body: Record<string, unknown>) => {
+    const res = await fetch("/api/buildings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (res.ok && Array.isArray(json.buildings)) onList(json.buildings);
+    return res.ok;
+  };
 
-  const mutate = async (body: { add?: string; remove?: string }) => {
+  const save = async () => {
+    const name = newName.trim();
+    if (!name || busy) return;
     setBusy(true);
     try {
-      const res = await fetch("/api/buildings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (res.ok && Array.isArray(json.buildings)) setBuildings(json.buildings);
-      return res.ok;
+      let photoMeta: Record<string, unknown> = {};
+      if (photoFile) {
+        const [img] = await uploadFiles([photoFile], "building");
+        photoMeta = { photoId: img.id, photoWidth: img.width, photoHeight: img.height };
+      }
+      if (await mutate({ add: name, ...photoMeta })) {
+        onChange(name);
+        setAdding(false);
+        setNewName("");
+        setPhotoFile(null);
+      }
     } catch {
-      return false;
+      /* keep the form open so the user can retry */
     } finally {
       setBusy(false);
     }
   };
 
+  const names = buildings.map((b) => b.name);
   // Keep a previously-typed / deleted value selectable so drafts stay valid.
-  const options = value && !buildings.includes(value) ? [value, ...buildings] : buildings;
+  const options = value && !names.includes(value) ? [value, ...names] : names;
 
   return (
     <Field label="Building name">
@@ -592,6 +627,7 @@ function BuildingSelect({
           onClick={() => {
             setAdding((a) => !a);
             setNewName("");
+            setPhotoFile(null);
           }}
           className="flex size-12 shrink-0 items-center justify-center rounded-[12px] border border-border bg-bg-subtle text-[20px] leading-none text-text transition-colors hover:bg-bg-hover"
         >
@@ -603,8 +639,7 @@ function BuildingSelect({
           aria-label="Remove selected building from the list"
           disabled={!value || busy}
           onClick={async () => {
-            const removed = value;
-            if (await mutate({ remove: removed })) onChange("");
+            if (await mutate({ remove: value })) onChange("");
           }}
           className="flex size-12 shrink-0 items-center justify-center rounded-[12px] border border-border bg-bg-subtle text-[20px] leading-none text-text transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -612,39 +647,48 @@ function BuildingSelect({
         </button>
       </div>
       {adding && (
-        <div className="mt-2 flex gap-2">
-          <input
-            className={`${inputCls} min-w-0 flex-1`}
-            value={newName}
-            maxLength={160}
-            placeholder="New building name"
-            autoFocus
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={async (e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const name = newName.trim();
-                if (name && (await mutate({ add: name }))) {
-                  onChange(name);
-                  setAdding(false);
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="flex gap-2">
+            <input
+              className={`${inputCls} min-w-0 flex-1`}
+              value={newName}
+              maxLength={160}
+              placeholder="New building name"
+              autoFocus
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void save();
                 }
-              }
-            }}
-          />
+              }}
+            />
+            <button
+              type="button"
+              disabled={!newName.trim() || busy}
+              onClick={save}
+              className="shrink-0 rounded-[12px] bg-accent px-4 text-[14px] font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-40"
+            >
+              {busy ? "Saving…" : "Save"}
+            </button>
+          </div>
           <button
             type="button"
-            disabled={!newName.trim() || busy}
-            onClick={async () => {
-              const name = newName.trim();
-              if (name && (await mutate({ add: name }))) {
-                onChange(name);
-                setAdding(false);
-              }
-            }}
-            className="shrink-0 rounded-[12px] bg-accent px-4 text-[14px] font-semibold text-accent-contrast transition-opacity hover:opacity-90 disabled:opacity-40"
+            onClick={() => photoRef.current?.click()}
+            className="flex min-h-11 items-center justify-between gap-3 rounded-[12px] border border-dashed border-border bg-bg-subtle px-3.5 text-[13.5px] text-text-muted transition-colors hover:bg-bg-hover"
           >
-            {busy ? "Saving…" : "Save"}
+            <span className="truncate">
+              {photoFile ? photoFile.name : "Building photo (optional) — used on every report for this building"}
+            </span>
+            <span className="shrink-0 font-semibold text-text">{photoFile ? "Change" : "Add"}</span>
           </button>
+          <input
+            ref={photoRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+          />
         </div>
       )}
     </Field>
@@ -657,16 +701,24 @@ function StepDetails({
   onNext,
   canNext,
   profile,
+  buildings,
+  onBuildings,
 }: {
   state: WizardState;
   set: <K extends keyof WizardState>(k: K, v: WizardState[K]) => void;
   onNext: () => void;
   canNext: boolean;
   profile: CompanyProfileView | null;
+  buildings: BuildingView[];
+  onBuildings: (list: BuildingView[]) => void;
 }) {
-  const brandBuilding: UploadedImage | null = profile?.building
-    ? { ...profile.building, name: "Brand building photo" }
-    : null;
+  // Hero fallback: the selected building's own photo wins over the brand's.
+  const buildingPhoto = buildings.find((b) => b.name === state.building)?.photo ?? null;
+  const heroFallback: UploadedImage | null = buildingPhoto
+    ? { ...buildingPhoto, name: "Building default photo" }
+    : profile?.building
+      ? { ...profile.building, name: "Brand building photo" }
+      : null;
   const moreCount = [state.level, state.area, state.preparedBy, state.scope].filter(
     (v) => v.trim() !== "",
   ).length;
@@ -696,7 +748,12 @@ function StepDetails({
                 />
               </Field>
             </div>
-            <BuildingSelect value={state.building} onChange={(v) => set("building", v)} />
+            <BuildingSelect
+              value={state.building}
+              onChange={(v) => set("building", v)}
+              buildings={buildings}
+              onList={onBuildings}
+            />
             <Field label="Report date">
               <input
                 type="date"
@@ -714,7 +771,7 @@ function StepDetails({
                 value={state.buildingPhoto}
                 onChange={(v) => set("buildingPhoto", v)}
                 hero
-                fallback={brandBuilding}
+                fallback={heroFallback}
               />
             </div>
           </div>

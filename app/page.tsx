@@ -84,6 +84,7 @@ export default function Home() {
   const [profileId, setProfileId] = usePersistent("cwr-profile", "focused-fm");
   const [profiles, setProfiles] = useState<CompanyProfileView[]>([]);
   const [ephemeral, setEphemeral] = useState(false);
+  const [brandOpen, setBrandOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,36 +144,59 @@ export default function Home() {
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-bg text-text">
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
-      <header className="mb-6 flex items-start justify-between gap-3 sm:items-end sm:gap-4">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 pt-3 sm:px-6 sm:pt-5">
+      {/* Slim single-line header: fields must start near the top of the screen. */}
+      <header className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
           {profile && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={profile.logo.url}
               alt={profile.name}
-              className="h-10 w-auto max-w-20 shrink-0 object-contain sm:h-14 sm:max-w-32"
+              className="h-8 w-auto max-w-16 shrink-0 object-contain sm:h-9"
             />
           )}
           <div className="min-w-0">
-            <p className="font-mono text-[10px] font-medium tracking-[0.14em] text-text-muted sm:text-[11px]">
-              CLEANING WORKS REPORT GENERATOR
+            <p className="truncate font-mono text-[9.5px] font-medium tracking-[0.12em] text-text-muted">
+              CLEANING WORKS REPORTS
             </p>
-            <h1 className="mt-1.5 font-display text-[19px] font-semibold leading-snug tracking-[-0.01em] text-text sm:mt-2 sm:text-[30px]">
-              Client-ready before / during / after reports
+            <h1 className="truncate font-display text-[16px] font-bold leading-tight tracking-[-0.01em] text-text sm:text-[18px]">
+              New report
             </h1>
           </div>
         </div>
-        <Link
-          href="/reports"
-          className="shrink-0 rounded-[12px] border border-border bg-bg-subtle px-3 py-2 text-[13px] font-semibold text-text transition-colors hover:bg-bg-hover sm:px-4 sm:text-[14px]"
-        >
-          Reports
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setBrandOpen((o) => !o)}
+            aria-expanded={brandOpen}
+            title="Company profile"
+            className={`flex min-h-10 items-center gap-1.5 rounded-[12px] border px-2.5 text-[13px] font-semibold transition-colors ${
+              brandOpen
+                ? "border-accent bg-bg-subtle text-text ring-1 ring-accent"
+                : "border-border bg-bg-subtle text-text hover:bg-bg-hover"
+            }`}
+          >
+            <span
+              className="inline-block size-2.5 rounded-full"
+              style={{ background: profile?.accent ?? "#D9232E" }}
+            />
+            <span className="hidden max-w-28 truncate sm:inline">{profile?.name ?? "Brand"}</span>
+            <span aria-hidden className="text-[10px] text-text-muted">
+              ▾
+            </span>
+          </button>
+          <Link
+            href="/reports"
+            className="min-h-10 content-center rounded-[12px] border border-border bg-bg-subtle px-3 text-[13px] font-semibold text-text transition-colors hover:bg-bg-hover sm:px-4 sm:text-[14px]"
+          >
+            Reports
+          </Link>
+        </div>
       </header>
 
       {ephemeral && (
-        <div className="mb-4 flex items-start gap-3 rounded-[14px] border border-[#EFD9A4] bg-[#FBF3E2] p-3.5">
+        <div className="mb-3 flex items-start gap-3 rounded-[14px] border border-[#EFD9A4] bg-[#FBF3E2] p-3.5">
           <span aria-hidden className="mt-1.5 size-2 shrink-0 rounded-full bg-[#E8A020]" />
           <p className="text-[13.5px] leading-relaxed text-[#7A5A12]">
             <strong>Storage is temporary.</strong> Reports, photos, brands and accounts are erased
@@ -183,24 +207,30 @@ export default function Home() {
         </div>
       )}
 
-      <div className="mb-6">
-        <CompanyPicker
-          profiles={profiles}
-          selectedId={profile?.id ?? "focused-fm"}
-          onSelect={setProfileId}
-          onSaved={(saved) => {
-            setProfiles((list) =>
-              list.some((p) => p.id === saved.id)
-                ? list.map((p) => (p.id === saved.id ? saved : p))
-                : [...list, saved],
-            );
-            setProfileId(saved.id);
-          }}
-        />
-      </div>
+      {/* Company profile picker — collapsed behind the brand chip in the header. */}
+      {brandOpen && (
+        <div className="step-enter mb-4 rounded-[14px] border border-hairline bg-bg-subtle p-3.5">
+          <CompanyPicker
+            profiles={profiles}
+            selectedId={profile?.id ?? "focused-fm"}
+            onSelect={(id) => {
+              setProfileId(id);
+              setBrandOpen(false);
+            }}
+            onSaved={(saved) => {
+              setProfiles((list) =>
+                list.some((p) => p.id === saved.id)
+                  ? list.map((p) => (p.id === saved.id ? saved : p))
+                  : [...list, saved],
+              );
+              setProfileId(saved.id);
+            }}
+          />
+        </div>
+      )}
 
       {/* Step indicator — numbered circles with connector lines (design handoff) */}
-      <nav aria-label="Steps" className="mb-8 flex items-center gap-2 border-b border-hairline pb-5">
+      <nav aria-label="Steps" className="mb-4 flex items-center gap-2 border-b border-hairline pb-3.5">
         {STEPS.map((label, i) => {
           const n = (i + 1) as WizardState["step"];
           const active = state.step === n;
@@ -348,9 +378,9 @@ export default function Home() {
 
 function StepHeading({ title, sub }: { title: string; sub: string }) {
   return (
-    <div className="mb-6">
-      <h2 className="font-display text-[20px] font-semibold text-text">{title}</h2>
-      <p className="mt-1 max-w-xl text-[14px] leading-relaxed text-text-muted">{sub}</p>
+    <div className="mb-4">
+      <h2 className="font-display text-[18px] font-semibold text-text sm:text-[20px]">{title}</h2>
+      <p className="mt-0.5 max-w-xl text-[13px] leading-relaxed text-text-muted">{sub}</p>
     </div>
   );
 }
@@ -368,8 +398,8 @@ function StepFooter({
 }) {
   return (
     <div
-      className="sticky bottom-0 z-20 -mx-4 mt-8 flex items-center justify-between gap-3 border-t border-hairline bg-bg/90 px-4 pt-4 backdrop-blur-md sm:static sm:z-auto sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-5 sm:backdrop-blur-none"
-      style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+      className="sticky bottom-0 z-20 -mx-4 mt-6 flex items-center justify-between gap-3 border-t border-hairline bg-bg/90 px-4 pt-3 backdrop-blur-md sm:-mx-6 sm:px-6"
+      style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
     >
       <GhostButton onClick={onBack}>Back</GhostButton>
       <div className="flex items-center gap-3">
@@ -417,7 +447,7 @@ function SingleUpload({
           onClick={() => ref.current?.click()}
           className={
             hero
-              ? "relative flex h-40 w-full items-center justify-center overflow-hidden rounded-[12px] border border-dashed border-border bg-bg-subtle text-[14px] text-text-muted transition-colors hover:bg-bg-hover sm:h-52"
+              ? "relative flex h-32 w-full items-center justify-center overflow-hidden rounded-[12px] border border-dashed border-border bg-bg-subtle text-[14px] text-text-muted transition-colors hover:bg-bg-hover sm:h-44"
               : "flex h-[72px] w-28 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-dashed border-border bg-bg-subtle text-[12px] text-text-muted transition-colors hover:bg-bg-hover"
           }
         >
@@ -637,95 +667,128 @@ function StepDetails({
   const brandBuilding: UploadedImage | null = profile?.building
     ? { ...profile.building, name: "Brand building photo" }
     : null;
+  const moreCount = [state.level, state.area, state.preparedBy, state.scope].filter(
+    (v) => v.trim() !== "",
+  ).length;
+
   return (
     <div className="step-enter">
-      <StepHeading
-        title="Report details"
-        sub="These appear on the cover and in the running header and footer of every page."
-      />
       <form
-        className="max-w-2xl rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7"
+        className="max-w-2xl"
         onSubmit={(e) => {
           e.preventDefault();
           if (canNext) onNext();
         }}
       >
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Field label="Report title">
+        <div className="rounded-[16px] border border-hairline bg-bg-subtle p-4 sm:p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+            <div className="sm:col-span-2">
+              <Field label="Report title">
+                <input
+                  className={inputCls}
+                  value={state.title}
+                  maxLength={160}
+                  placeholder="e.g. External Facade & Communal Areas Deep Clean"
+                  onChange={(e) => set("title", e.target.value)}
+                  enterKeyHint="next"
+                  autoFocus
+                  required
+                />
+              </Field>
+            </div>
+            <BuildingSelect value={state.building} onChange={(v) => set("building", v)} />
+            <Field label="Report date">
               <input
-                className={inputCls}
-                value={state.title}
-                maxLength={160}
-                placeholder="e.g. External Facade & Communal Areas Deep Clean"
-                onChange={(e) => set("title", e.target.value)}
-                required
+                type="date"
+                className={`${inputCls} font-mono`}
+                value={state.date}
+                onChange={(e) => set("date", e.target.value)}
               />
             </Field>
-          </div>
-          <BuildingSelect value={state.building} onChange={(v) => set("building", v)} />
-          <Field label="Report date">
-            <input
-              type="date"
-              className={`${inputCls} font-mono`}
-              value={state.date}
-              onChange={(e) => set("date", e.target.value)}
-            />
-          </Field>
-          <Field label="Level / floor" optional>
-            <input
-              className={inputCls}
-              value={state.level}
-              maxLength={40}
-              placeholder="e.g. B1"
-              onChange={(e) => set("level", e.target.value)}
-            />
-          </Field>
-          <Field label="Area" optional>
-            <input
-              className={inputCls}
-              value={state.area}
-              maxLength={80}
-              placeholder="e.g. Corridor"
-              onChange={(e) => set("area", e.target.value)}
-            />
-          </Field>
-          <div className="sm:col-span-2">
-            <SingleUpload
-              label="Building photo"
-              optionalNote="Used as the cover hero image on the report."
-              kind="building"
-              accept="image/jpeg,image/png,image/webp"
-              value={state.buildingPhoto}
-              onChange={(v) => set("buildingPhoto", v)}
-              hero
-              fallback={brandBuilding}
-            />
-          </div>
-          <Field label="Prepared by" optional>
-            <input
-              className={inputCls}
-              value={state.preparedBy}
-              maxLength={100}
-              placeholder="Name or team"
-              onChange={(e) => set("preparedBy", e.target.value)}
-            />
-          </Field>
-          <div className="sm:col-span-2">
-            <Field label="Scope of works" optional>
-              <textarea
-                className={`${inputCls} min-h-24 resize-y`}
-                value={state.scope}
-                maxLength={4000}
-                placeholder="Short description of the works carried out — gets its own page in the report."
-                onChange={(e) => set("scope", e.target.value)}
+            <div className="sm:col-span-2">
+              <SingleUpload
+                label="Building photo"
+                optionalNote="Used as the cover hero image on the report."
+                kind="building"
+                accept="image/jpeg,image/png,image/webp"
+                value={state.buildingPhoto}
+                onChange={(v) => set("buildingPhoto", v)}
+                hero
+                fallback={brandBuilding}
               />
-            </Field>
+            </div>
           </div>
+
+          {/* Optional extras stay folded so the essentials fit one screen. */}
+          <details className="group mt-4 rounded-[12px] border border-hairline bg-bg" open={moreCount > 0}>
+            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 text-[14px] font-semibold text-text [&::-webkit-details-marker]:hidden">
+              <span>
+                More details{" "}
+                <span className="font-normal text-text-muted">
+                  — level, area, prepared by, scope
+                </span>
+              </span>
+              <span className="flex items-center gap-2">
+                {moreCount > 0 && (
+                  <span className="rounded-full bg-bg-element px-2 py-0.5 text-[11px] font-bold text-text-muted">
+                    {moreCount}
+                  </span>
+                )}
+                <span aria-hidden className="text-[11px] text-text-muted transition-transform group-open:rotate-180">
+                  ▾
+                </span>
+              </span>
+            </summary>
+            <div className="grid grid-cols-1 gap-4 border-t border-hairline p-4 sm:grid-cols-2">
+              <Field label="Level / floor" optional>
+                <input
+                  className={inputCls}
+                  value={state.level}
+                  maxLength={40}
+                  placeholder="e.g. B1"
+                  onChange={(e) => set("level", e.target.value)}
+                />
+              </Field>
+              <Field label="Area" optional>
+                <input
+                  className={inputCls}
+                  value={state.area}
+                  maxLength={80}
+                  placeholder="e.g. Corridor"
+                  onChange={(e) => set("area", e.target.value)}
+                />
+              </Field>
+              <Field label="Prepared by" optional>
+                <input
+                  className={inputCls}
+                  value={state.preparedBy}
+                  maxLength={100}
+                  placeholder="Name or team"
+                  onChange={(e) => set("preparedBy", e.target.value)}
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Scope of works" optional>
+                  <textarea
+                    className={`${inputCls} min-h-20 resize-y`}
+                    value={state.scope}
+                    maxLength={4000}
+                    placeholder="Short description of the works carried out — gets its own page in the report."
+                    onChange={(e) => set("scope", e.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
+          </details>
         </div>
-        <div className="mt-7 flex items-center justify-end gap-3 border-t border-hairline pt-5">
+
+        {/* Sticky continue — always reachable without scrolling. */}
+        <div
+          className="sticky bottom-0 z-20 -mx-4 mt-4 flex items-center justify-end gap-3 border-t border-hairline bg-bg/90 px-4 pt-3 backdrop-blur-md"
+          style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+        >
           {!canNext && (
-            <span className="text-[13px] text-text-muted">Title and building name are required</span>
+            <span className="text-[13px] text-text-muted">Title and building are required</span>
           )}
           <PrimaryButton type="submit" disabled={!canNext}>
             Continue

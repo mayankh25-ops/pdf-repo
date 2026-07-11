@@ -439,7 +439,7 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
                   mono((report.company?.name ?? report.building).toUpperCase(), 13),
                   new TextRun({ text: "\t", font: MONO, size: 13 }),
                   mono(
-                    `${report.reportNo ? `Nº ${report.reportNo} · ` : ""}WORKS COMPLETED · ${fmtDate(report.date)} · `,
+                    `${report.reportNo ? `Nº ${report.reportNo} · ` : ""}${report.title.toUpperCase().slice(0, 60)} · ${fmtDate(report.date)} · `,
                     13,
                   ),
                   new TextRun({

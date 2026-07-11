@@ -70,14 +70,6 @@ function buildPayload(state: WizardState, profileId: string, templateId: Templat
 
 type PhotoLayout = "auto" | "columns" | "rows";
 
-/** Tinted phase-count pills, colours from the mobile design handoff. */
-const PHASE_PILL: Record<Phase, { label: string; bg: string; fg: string }> = {
-  before: { label: "BEFORE", bg: "rgba(217,35,46,0.09)", fg: "#D9232E" },
-  during: { label: "DURING", bg: "rgba(232,160,32,0.12)", fg: "#B47714" },
-  after: { label: "AFTER", bg: "rgba(30,158,87,0.10)", fg: "#1E9E57" },
-  general: { label: "NO TAG", bg: "#F0EDE7", fg: "#8B867E" },
-};
-
 export default function Home() {
   const [state, setState] = useState<WizardState>(initialState);
   const [layoutRaw, setLayoutRaw] = usePersistent("cwr-photo-layout", "auto");
@@ -898,10 +890,6 @@ function StepGenerate({
   // hydration concern.
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
-  const pairable =
-    state.photos.before.length > 0 && state.photos.before.length === state.photos.after.length;
-  const counts = PHASES.map((p) => state.photos[p].length);
-
   /** Generates every selected template sequentially. */
   const generate = async () => {
     setBusy(true);
@@ -928,6 +916,8 @@ function StepGenerate({
     } finally {
       setBusy(false);
       setProgress("");
+      // The result card renders where the form was — bring it into view.
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -938,167 +928,114 @@ function StepGenerate({
     ? `Hi,\n\nPlease find the cleaning works report Nº ${first.reportNo} for ${state.building}.\n\nDownload: ${pdfAbsolute}\n\nBest regards${state.preparedBy ? `,\n${state.preparedBy}` : ""}`
     : "";
 
+  const bigBtn =
+    "flex min-h-14 w-full items-center justify-center gap-2 rounded-[14px] text-[16.5px] font-semibold transition-opacity hover:opacity-90";
+
   return (
     <div className="step-enter">
-      <StepHeading
-        title="Generate & share"
-        sub="A print-grade A4 PDF and a matching Word document, ready to send."
-      />
-
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-7">
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[14px]">
-            <div>
-              <dt className="text-text-muted">Building</dt>
-              <dd className="mt-0.5 font-medium text-text">{state.building || "—"}</dd>
+      <div className="mx-auto max-w-xl">
+        {busy ? (
+          /* Progress takes over the whole card while the PDF renders. */
+          <div className="step-enter flex flex-col items-center gap-4 rounded-[16px] border border-hairline bg-bg-subtle px-6 py-12 text-center">
+            <span
+              aria-hidden
+              className="inline-block size-11 animate-spin rounded-full border-[3.5px] border-accent border-t-transparent"
+            />
+            <p className="text-[17px] font-bold text-text">Generating your report…</p>
+            <p className="text-[13px] text-text-muted">
+              {progress || "Laying out pages and photos"}
+            </p>
+            <div className="h-1.5 w-full max-w-60 overflow-hidden rounded-full bg-bg-element">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-accent" />
             </div>
-            <div>
-              <dt className="text-text-muted">Date</dt>
-              <dd className="mt-0.5 font-mono text-[13px] text-text">{state.date}</dd>
+          </div>
+        ) : results.length === 0 ? (
+          <div className="rounded-[16px] border border-hairline bg-bg-subtle p-4 sm:p-6">
+            <p className="text-[15px] text-text">
+              <span className="font-bold">{state.title || "Report"}</span>
+              <span className="text-text-muted">
+                {" "}
+                — {state.building || "—"} · {state.date}
+              </span>
+            </p>
+            <div className="mt-4">
+              <Field label="Remarks" optional>
+                <textarea
+                  className={`${inputCls} min-h-20 resize-y`}
+                  value={state.remarks}
+                  maxLength={4000}
+                  placeholder="Optional — shown on the last page of the report."
+                  onChange={(e) => set("remarks", e.target.value)}
+                />
+              </Field>
             </div>
-          </dl>
-
-          {/* Tinted phase-count pills (design handoff) */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {PHASES.map((p) => (
-              <span
-                key={p}
-                className="flex h-7 items-center gap-1.5 rounded-full px-2.5"
-                style={{ background: PHASE_PILL[p].bg }}
-              >
-                <span
-                  className="text-[10px] font-extrabold tracking-[0.08em]"
-                  style={{ color: PHASE_PILL[p].fg }}
-                >
-                  {PHASE_PILL[p].label}
-                </span>
-                <span className="text-[13px] font-bold text-text">{state.photos[p].length}</span>
+            <div className="mt-5">
+              <PrimaryButton onClick={generate} disabled={!canGenerate} full>
+                Generate report
+              </PrimaryButton>
+              <ErrorNote message={error} />
+            </div>
+          </div>
+        ) : (
+          <div className="step-enter rounded-[16px] border border-hairline bg-bg-subtle p-4 sm:p-6">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#1E9E57] text-[16px] text-white">
+                ✓
               </span>
-            ))}
-          </div>
+              <div className="min-w-0">
+                <p className="text-[17px] font-bold text-text">Report ready</p>
+                <p className="truncate text-[13px] text-text-muted">
+                  Nº {first.reportNo} · {state.building}
+                </p>
+              </div>
+            </div>
 
-          <div
-            className={`mt-6 flex items-start justify-between gap-3 rounded-[12px] border border-hairline bg-bg p-4 ${
-              pairable ? "" : "opacity-55"
-            }`}
-          >
-            <span>
-              <span className="block text-[14px] font-medium text-text">
-                Paired before / after comparison
-              </span>
-              <span className="mt-0.5 block text-[12.5px] leading-relaxed text-text-muted">
-                {pairable
-                  ? "Lay matching photos out side by side — before left, after right. During photos keep their own section."
-                  : `Needs matching before/after counts (currently ${counts[0]} / ${counts[2]}).`}
-              </span>
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={state.paired && pairable}
-              aria-label="Paired before / after comparison"
-              disabled={!pairable}
-              onClick={() => set("paired", !(state.paired && pairable))}
-              className={`relative mt-0.5 h-[30px] w-[50px] shrink-0 rounded-full transition-colors ${
-                state.paired && pairable ? "bg-accent" : "bg-border"
-              }`}
-            >
-              <span
-                className={`absolute top-[2px] size-[26px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)] transition-all ${
-                  state.paired && pairable ? "left-[22px]" : "left-[2px]"
-                }`}
-              />
-            </button>
-          </div>
-
-          <div className="mt-5">
-            <Field label="Remarks" optional>
-              <textarea
-                className={`${inputCls} min-h-20 resize-y`}
-                value={state.remarks}
-                maxLength={4000}
-                placeholder="Only appears on the last page of the report if you write something here."
-                onChange={(e) => set("remarks", e.target.value)}
-              />
-            </Field>
-          </div>
-
-          <div className="mt-6">
-            <PrimaryButton onClick={generate} disabled={busy || !canGenerate} full>
-              {busy ? (
-                <>
-                  <Spinner /> {progress || "Generating…"}
-                </>
-              ) : (
-                `Generate ${state.templateIds.length > 1 ? `${state.templateIds.length} reports` : "report"}`
-              )}
-            </PrimaryButton>
-            <ErrorNote message={error} />
-          </div>
-        </div>
-
-        {/* Results */}
-        <div className="rounded-[16px] border border-hairline bg-bg-subtle p-5 sm:p-6">
-          {results.length > 0 ? (
-            <div className="step-enter flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               {results.map((r) => (
-                <div key={r.templateId} className="rounded-[12px] border border-hairline bg-bg p-3.5">
-                  <p className="font-mono text-[11px] font-medium tracking-[0.12em] text-text-muted">
-                    Nº {r.reportNo} · {r.templateName.toUpperCase()}
-                  </p>
-                  <div className="mt-2.5 flex gap-2">
-                    <a
-                      href={r.pdfUrl}
-                      className="flex flex-1 items-center justify-center rounded-[10px] bg-accent px-3 py-2.5 text-[14px] font-medium text-accent-contrast transition-opacity hover:opacity-90"
-                    >
-                      PDF ↓
-                    </a>
-                    <a
-                      href={r.docxUrl}
-                      className="flex flex-1 items-center justify-center rounded-[10px] border border-border bg-bg px-3 py-2.5 text-[14px] font-medium text-text transition-colors hover:bg-bg-hover"
-                    >
-                      Word ↓
-                    </a>
-                  </div>
-                </div>
+                <a
+                  key={r.templateId}
+                  href={r.pdfUrl}
+                  className={`${bigBtn} bg-accent text-accent-contrast shadow-[0_10px_24px_rgba(0,122,255,0.25)]`}
+                >
+                  ⬇ Download PDF
+                  {results.length > 1 ? ` — ${r.templateName.replace("Focused — ", "")}` : ""}
+                </a>
               ))}
-              <a
-                href={`mailto:?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareBody)}`}
-                title="Opens your email app with a pre-filled message. Attach the downloaded file manually — email links can't carry attachments."
-                className="flex items-center justify-between rounded-[10px] border border-border bg-bg px-4 py-3 text-[14.5px] font-medium text-text transition-colors hover:bg-bg-hover"
-              >
-                Share via Email <span aria-hidden>→</span>
-              </a>
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(`${shareSubject}\n\n${shareBody}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between rounded-[10px] border border-border bg-bg px-4 py-3 text-[14.5px] font-medium text-text transition-colors hover:bg-bg-hover"
+                className={`${bigBtn} bg-[#25D366] text-white`}
               >
-                Share via WhatsApp <span aria-hidden>→</span>
+                Share via WhatsApp
               </a>
-              <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
-                Stored on this portal — find every report anytime under{" "}
-                <Link href="/reports" className="underline decoration-hairline underline-offset-2">
-                  Reports
-                </Link>
-                . Share links point at the first report; email attachments must be added manually.
-              </p>
+              <a
+                href={`mailto:?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareBody)}`}
+                className={`${bigBtn} border border-border bg-bg text-text hover:bg-bg-hover`}
+              >
+                Share via Email
+              </a>
             </div>
-          ) : (
-            <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 text-center">
-              <p className="text-[14px] font-medium text-text-muted">
-                {state.templateIds.length} template{state.templateIds.length === 1 ? "" : "s"} selected
-              </p>
-              <p className="max-w-56 text-[12.5px] leading-relaxed text-text-tertiary">
-                Generate to get download links for each selected template.
-              </p>
+
+            <div className="mt-5 flex items-center justify-center gap-5 text-[13px] text-text-muted">
+              <a
+                href={first.docxUrl}
+                className="underline decoration-hairline underline-offset-2 hover:text-text"
+              >
+                Word version
+              </a>
+              <Link
+                href="/reports"
+                className="underline decoration-hairline underline-offset-2 hover:text-text"
+              >
+                All reports
+              </Link>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      <div className="mt-8 flex items-center justify-between border-t border-hairline pt-5">
+      <div className="mt-6 flex items-center justify-between">
         <GhostButton onClick={onBack}>Back</GhostButton>
       </div>
     </div>

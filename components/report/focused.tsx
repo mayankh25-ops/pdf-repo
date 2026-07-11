@@ -15,7 +15,7 @@ const fmtDate = (iso: string) => {
 /* ---------------------------------------------------------------------------
    The "Focused" family — a faithful replication of the client's own report
    templates: light chrome on EVERY page (logo left, BUILDING · CLEANING
-   REPORT right, company + WORKS COMPLETED footer), rounded photo cards with
+   REPORT right, company + report-title footer), rounded photo cards with
    coloured phase pills, 2×2 grid pages followed by large feature photos
    (lib/layout.ts), bold headings with a heavy rule, and a centred
    "Thank you." last page.
@@ -114,8 +114,18 @@ export function FocusedPage({ r, children }: { r: ReportView; children: React.Re
         <span style={{ ...mono, color: "var(--text-muted)" }}>
           {(r.company?.name ?? "").toUpperCase()}
         </span>
-        <span style={{ ...mono, color: "var(--text-muted)" }}>
-          WORKS COMPLETED · {fmtDate(r.date)}
+        <span
+          style={{
+            ...mono,
+            color: "var(--text-muted)",
+            maxWidth: "120mm",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            textAlign: "right",
+          }}
+        >
+          {r.title.toUpperCase()} · {fmtDate(r.date)}
         </span>
       </footer>
     </section>

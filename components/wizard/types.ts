@@ -1,5 +1,11 @@
 import type { Phase, TemplateId } from "@/lib/types";
 
+export interface BuildingView {
+  name: string;
+  /** the building's default hero photo, shown on covers automatically */
+  photo: { id: string; url: string; width: number; height: number } | null;
+}
+
 export interface UploadedImage {
   id: string;
   url: string;

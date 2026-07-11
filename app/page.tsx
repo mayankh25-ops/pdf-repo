@@ -5,8 +5,13 @@ import Link from "next/link";
 import type { Phase, TemplateId } from "@/lib/types";
 import { PHASES } from "@/lib/types";
 import { TEMPLATES } from "@/lib/templates";
-import type { UploadedImage, WizardState } from "@/components/wizard/types";
+import type { BuildingView, UploadedImage, WizardState } from "@/components/wizard/types";
 import { initialState, uploadFiles } from "@/components/wizard/types";
+import {
+  backupBuilding,
+  removeBackup,
+  restoreBuildings,
+} from "@/components/wizard/buildingBackup";
 import {
   Field,
   GhostButton,
@@ -82,8 +87,12 @@ export default function Home() {
     let cancelled = false;
     fetch("/api/buildings")
       .then((res) => res.json())
-      .then((json) => {
-        if (!cancelled && Array.isArray(json.buildings)) setBuildings(json.buildings);
+      .then(async (json) => {
+        if (cancelled || !Array.isArray(json.buildings)) return;
+        setBuildings(json.buildings);
+        // Re-create anything a redeploy wiped, from this device's backup.
+        const restored = await restoreBuildings(json.buildings);
+        if (!cancelled && restored) setBuildings(restored);
       })
       .catch(() => {});
     return () => {
@@ -517,12 +526,6 @@ function SingleUpload({
   );
 }
 
-export interface BuildingView {
-  name: string;
-  /** the building's default hero photo, shown on covers automatically */
-  photo: { id: string; url: string; width: number; height: number } | null;
-}
-
 /** Building dropdown backed by the shared server-side list. + adds a
  *  building (with its default hero photo), − deletes the selected one. */
 function BuildingSelect({
@@ -564,6 +567,7 @@ function BuildingSelect({
         photoMeta = { photoId: img.id, photoWidth: img.width, photoHeight: img.height };
       }
       if (await mutate({ add: name, ...photoMeta })) {
+        void backupBuilding(name, photoFile);
         onChange(name);
         setAdding(false);
         setNewName("");
@@ -617,7 +621,10 @@ function BuildingSelect({
           aria-label="Remove selected building from the list"
           disabled={!value || busy}
           onClick={async () => {
-            if (await mutate({ remove: value })) onChange("");
+            if (await mutate({ remove: value })) {
+              removeBackup(value);
+              onChange("");
+            }
           }}
           className="flex size-12 shrink-0 items-center justify-center rounded-[12px] border border-border bg-bg-subtle text-[20px] leading-none text-text transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -729,10 +736,6 @@ function StepDetails({
     : profile?.building
       ? { ...profile.building, name: "Brand building photo" }
       : null;
-  const moreCount = [state.level, state.area, state.preparedBy, state.scope].filter(
-    (v) => v.trim() !== "",
-  ).length;
-
   return (
     <div className="step-enter">
       <form
@@ -786,67 +789,6 @@ function StepDetails({
             </div>
           </div>
 
-          {/* Optional extras stay folded so the essentials fit one screen. */}
-          <details className="group mt-4 rounded-[12px] border border-hairline bg-bg" open={moreCount > 0}>
-            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 text-[14px] font-semibold text-text [&::-webkit-details-marker]:hidden">
-              <span>
-                More details{" "}
-                <span className="font-normal text-text-muted">
-                  — level, area, prepared by, scope
-                </span>
-              </span>
-              <span className="flex items-center gap-2">
-                {moreCount > 0 && (
-                  <span className="rounded-full bg-bg-element px-2 py-0.5 text-[11px] font-bold text-text-muted">
-                    {moreCount}
-                  </span>
-                )}
-                <span aria-hidden className="text-[11px] text-text-muted transition-transform group-open:rotate-180">
-                  ▾
-                </span>
-              </span>
-            </summary>
-            <div className="grid grid-cols-1 gap-4 border-t border-hairline p-4 sm:grid-cols-2">
-              <Field label="Level / floor" optional>
-                <input
-                  className={inputCls}
-                  value={state.level}
-                  maxLength={40}
-                  placeholder="e.g. B1"
-                  onChange={(e) => set("level", e.target.value)}
-                />
-              </Field>
-              <Field label="Area" optional>
-                <input
-                  className={inputCls}
-                  value={state.area}
-                  maxLength={80}
-                  placeholder="e.g. Corridor"
-                  onChange={(e) => set("area", e.target.value)}
-                />
-              </Field>
-              <Field label="Prepared by" optional>
-                <input
-                  className={inputCls}
-                  value={state.preparedBy}
-                  maxLength={100}
-                  placeholder="Name or team"
-                  onChange={(e) => set("preparedBy", e.target.value)}
-                />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Scope of works" optional>
-                  <textarea
-                    className={`${inputCls} min-h-20 resize-y`}
-                    value={state.scope}
-                    maxLength={4000}
-                    placeholder="Short description of the works carried out — gets its own page in the report."
-                    onChange={(e) => set("scope", e.target.value)}
-                  />
-                </Field>
-              </div>
-            </div>
-          </details>
         </div>
 
         {/* Sticky continue — always reachable without scrolling. */}

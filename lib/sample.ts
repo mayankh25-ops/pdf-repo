@@ -15,6 +15,9 @@ export interface ReportView {
   preparedBy?: string;
   scope?: string;
   remarks?: string;
+  currentSituation?: string;
+  rectifications?: string;
+  recommendations?: string;
   templateId: TemplateId;
   paired: boolean;
   buildingPhoto?: PhotoView | null;
@@ -57,7 +60,7 @@ export const FOCUSED_LOGO: PhotoMeta & { url: string } = {
   height: 47,
 };
 
-export const sampleReport = (templateId: TemplateId = "focused-card"): ReportView => ({
+export const sampleReport = (templateId: TemplateId = "improvement"): ReportView => ({
   reportNo: "2026-0001",
   title: "Floor Scrubbing & Pressure Wash",
   building: "Aurora Melbourne Central",
@@ -68,6 +71,12 @@ export const sampleReport = (templateId: TemplateId = "focused-card"): ReportVie
   preparedBy: "Nikki",
   scope:
     "Full soft-wash of the front and rear elevations including render, cladding and glazing frames; degrease and pressure-clean of loading bay and bin store; machine scrub and re-seal of lobby and stair-core hard floors; high-level dusting of communal ceilings, vents and light fittings. All works completed to the agreed specification with photographic evidence collected before, during and after each stage.",
+  currentSituation:
+    "Heavy soiling and staining across the B1 corridor and bin store. Odours affecting the adjacent lift lobby, with visible contamination to floors and skirtings.",
+  rectifications:
+    "Removed all dumped waste and completed a deep clean of the corridor. Machine-scrubbed and re-sealed the floor with a durable, easy-to-clean coating.",
+  recommendations:
+    "Schedule a monthly deep clean of the bin store and review waste collection frequency to prevent overflow between services.",
   templateId,
   paired: false,
   buildingPhoto: sm("building.jpg", 2400, 1600),

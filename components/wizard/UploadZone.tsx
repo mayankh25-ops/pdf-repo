@@ -259,6 +259,26 @@ export function UploadZone({
                 >
                   ×
                 </button>
+                {/* Print-size picker: full page / 2 per page / 4 per page */}
+                <select
+                  aria-label="Print size in the report"
+                  value={img.size ?? "auto"}
+                  onChange={(e) =>
+                    onChange(
+                      images.map((x) =>
+                        x.id === img.id
+                          ? { ...x, size: e.target.value as UploadedImage["size"] }
+                          : x,
+                      ),
+                    )
+                  }
+                  className="absolute bottom-2 left-2 min-h-9 rounded-[8px] border border-border bg-bg px-2 py-1.5 font-mono text-[11px] font-medium tracking-[0.06em] text-text-muted"
+                >
+                  <option value="auto">AUTO SIZE</option>
+                  <option value="full">FULL PAGE</option>
+                  <option value="half">2 / PAGE</option>
+                  <option value="quarter">4 / PAGE</option>
+                </select>
                 {/* Touch-friendly mover: works where drag-and-drop doesn't */}
                 <select
                   aria-label="Move photo to section"

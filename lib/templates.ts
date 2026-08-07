@@ -15,6 +15,14 @@ export interface TemplateDef {
 
 export const TEMPLATES: TemplateDef[] = [
   {
+    id: "improvement",
+    name: "Improvement Report",
+    blurb:
+      "Aurora-style co-branded weekly report — PT Sans, navy headings, typed sections and big stretched photos.",
+    dark: false,
+    usesPhoto: true,
+  },
+  {
     id: "focused-card",
     name: "Focused — Spec card",
     blurb:

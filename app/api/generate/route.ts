@@ -16,6 +16,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const TEMPLATE_IDS: TemplateId[] = [
+  "improvement",
   "focused-card",
   "focused-photo",
   "focused-scrim",
@@ -51,6 +52,7 @@ const photoList = (v: unknown): ReportData["photos"]["before"] =>
           width: Math.round(p.width),
           height: Math.round(p.height),
           caption: str(p.caption, 140) || undefined,
+          size: ["full", "half", "quarter"].includes(p.size) ? p.size : undefined,
         }))
     : [];
 
@@ -72,9 +74,12 @@ function sanitize(input: unknown): ReportData | null {
     preparedBy: str(raw.preparedBy, 100) || undefined,
     scope: str(raw.scope, 4000) || undefined,
     remarks: str(raw.remarks, 4000) || undefined,
+    currentSituation: str(raw.currentSituation, 4000) || undefined,
+    rectifications: str(raw.rectifications, 4000) || undefined,
+    recommendations: str(raw.recommendations, 4000) || undefined,
     templateId: TEMPLATE_IDS.includes(raw.templateId as TemplateId)
       ? (raw.templateId as TemplateId)
-      : "focused-card",
+      : "improvement",
     paired: raw.paired === true,
     buildingPhoto: photoList([raw.buildingPhoto])[0] ?? null,
     logo: photoList([raw.logo])[0] ?? null,

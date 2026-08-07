@@ -48,6 +48,7 @@ function buildPayload(state: WizardState, profileId: string, templateId: Templat
     width: img.width,
     height: img.height,
     caption: img.caption?.trim() || undefined,
+    size: img.size && img.size !== "auto" ? img.size : undefined,
   });
   const pairable =
     state.photos.before.length > 0 && state.photos.before.length === state.photos.after.length;
@@ -60,6 +61,9 @@ function buildPayload(state: WizardState, profileId: string, templateId: Templat
     preparedBy: state.preparedBy || undefined,
     scope: state.scope || undefined,
     remarks: state.remarks || undefined,
+    currentSituation: state.currentSituation || undefined,
+    rectifications: state.rectifications || undefined,
+    recommendations: state.recommendations || undefined,
     profileId,
     templateId,
     paired: state.paired && pairable,
@@ -786,6 +790,39 @@ function StepDetails({
                 hero
                 fallback={heroFallback}
               />
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Current situation" optional>
+                <textarea
+                  className={`${inputCls} min-h-20 resize-y`}
+                  value={state.currentSituation}
+                  maxLength={4000}
+                  placeholder="What's wrong right now — appears at the top of the report."
+                  onChange={(e) => set("currentSituation", e.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Rectifications completed" optional>
+                <textarea
+                  className={`${inputCls} min-h-20 resize-y`}
+                  value={state.rectifications}
+                  maxLength={4000}
+                  placeholder="What was fixed — appears after the photos."
+                  onChange={(e) => set("rectifications", e.target.value)}
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Recommendations" optional>
+                <textarea
+                  className={`${inputCls} min-h-20 resize-y`}
+                  value={state.recommendations}
+                  maxLength={4000}
+                  placeholder="What should happen next — closes the report."
+                  onChange={(e) => set("recommendations", e.target.value)}
+                />
+              </Field>
             </div>
           </div>
 

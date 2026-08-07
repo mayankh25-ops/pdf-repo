@@ -19,6 +19,7 @@ export const PHASE_TITLE: Record<Phase, string> = {
 };
 
 export type TemplateId =
+  | "improvement"
   | "focused-photo"
   | "focused-card"
   | "focused-scrim"
@@ -33,11 +34,15 @@ export type TemplateId =
   | "collage-card"
   | "filmstrip";
 
+/** How large a photo prints: full page, 2 per page, 4 per page, or automatic. */
+export type PhotoSize = "auto" | "full" | "half" | "quarter";
+
 export interface PhotoMeta {
   id: string;
   width: number;
   height: number;
   caption?: string;
+  size?: PhotoSize;
 }
 
 export interface CompanyInfo {
@@ -64,6 +69,10 @@ export interface ReportData {
   scope?: string;
   /** Optional remarks shown on the last page only when filled in */
   remarks?: string;
+  /** Improvement-report sections — each is skipped when empty */
+  currentSituation?: string;
+  rectifications?: string;
+  recommendations?: string;
   templateId: TemplateId;
   /** Paired before/after comparison layout when counts match */
   paired: boolean;

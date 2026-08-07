@@ -50,6 +50,9 @@ export function previewView(
     preparedBy: state.preparedBy.trim() || sample.preparedBy,
     scope: state.scope.trim() || undefined,
     remarks: state.remarks.trim() || undefined,
+    currentSituation: state.currentSituation.trim() || sample.currentSituation,
+    rectifications: state.rectifications.trim() || sample.rectifications,
+    recommendations: state.recommendations.trim() || sample.recommendations,
     paired: state.paired,
     company: profile
       ? { name: profile.name, accent: profile.accent, logoScale: profile.logoScale }
@@ -89,7 +92,7 @@ export function TemplatePreview({
     templateId: null,
     idx: 0,
   });
-  const templateId = selected[0] ?? "focused-card";
+  const templateId = selected[0] ?? "improvement";
   const view = useMemo(
     () => previewView(state, templateId, profile, hero),
     [state, templateId, profile, hero],
@@ -214,7 +217,7 @@ export function TemplateGallery({
                 <span className="block text-[12.5px] font-semibold leading-tight text-text">
                   {def.name}
                 </span>
-                {def.id === "focused-card" && (
+                {def.id === "improvement" && (
                   <span className="mt-0.5 block text-[10px] font-bold tracking-[0.06em] text-text-tertiary">
                     DEFAULT
                   </span>

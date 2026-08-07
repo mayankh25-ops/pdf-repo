@@ -1,4 +1,4 @@
-import type { Phase, TemplateId } from "@/lib/types";
+import type { Phase, PhotoSize, TemplateId } from "@/lib/types";
 
 export interface BuildingView {
   name: string;
@@ -13,6 +13,8 @@ export interface UploadedImage {
   height: number;
   name: string;
   caption?: string;
+  /** print size: full page / 2 per page / 4 per page / automatic */
+  size?: PhotoSize;
 }
 
 export interface WizardState {
@@ -25,6 +27,9 @@ export interface WizardState {
   area: string;
   scope: string;
   remarks: string;
+  currentSituation: string;
+  rectifications: string;
+  recommendations: string;
   buildingPhoto: UploadedImage | null;
   templateIds: TemplateId[];
   photos: Record<Phase, UploadedImage[]>;
@@ -41,8 +46,11 @@ export const initialState = (): WizardState => ({
   area: "",
   scope: "",
   remarks: "",
+  currentSituation: "",
+  rectifications: "",
+  recommendations: "",
   buildingPhoto: null,
-  templateIds: ["focused-card"],
+  templateIds: ["improvement"],
   photos: { before: [], during: [], after: [], general: [] },
   paired: false,
 });

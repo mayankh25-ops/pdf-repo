@@ -21,6 +21,9 @@ const files = [
     "node_modules/@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-ext-wght-normal.woff2",
     "HankenGrotesk-Variable-ext.woff2",
   ],
+  // PT Sans — the Improvement Report template family
+  ["node_modules/@fontsource/pt-sans/files/pt-sans-latin-400-normal.woff2", "PTSans-Regular.woff2"],
+  ["node_modules/@fontsource/pt-sans/files/pt-sans-latin-700-normal.woff2", "PTSans-Bold.woff2"],
 ];
 
 for (const [src, dest] of files) {

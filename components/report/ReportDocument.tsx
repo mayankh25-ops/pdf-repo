@@ -4,7 +4,8 @@ import { getTemplate } from "@/lib/templates";
 import type { PhotoView, ReportView } from "@/lib/sample";
 import { ChromePage, Logo, PhotoCell, TagChip, fmtDate } from "./primitives";
 import { Cover } from "./covers";
-import { photoPageChunks } from "@/lib/layout";
+import { photoPageChunksSized } from "@/lib/layout";
+import { ImprovementClosing, buildImprovementPages } from "./improvement";
 import {
   FocusedCover,
   FocusedHeading,
@@ -327,6 +328,7 @@ function BackPage({ r, dark }: { r: ReportView; dark: boolean }) {
 
 /** The document's final page — used directly by the template picker preview. */
 export function DocumentLastPage({ r }: { r: ReportView }) {
+  if (r.templateId === "improvement") return <ImprovementClosing r={r} />;
   if (getTemplate(r.templateId).family === "focused") return <FocusedThankYou r={r} />;
   return <BackPage r={r} dark={getTemplate(r.templateId).dark} />;
 }
@@ -378,7 +380,7 @@ function buildFocusedPages(r: ReportView): React.ReactNode[] {
   } else {
     for (const phase of PHASES) {
       const list = r.photos[phase];
-      photoPageChunks(list.length).forEach((chunk, ci) => {
+      photoPageChunksSized(list.map((p) => p.size)).forEach((chunk, ci) => {
         const heading = ci === 0 && PHASE_TITLE[phase] !== "";
         const group = list.slice(chunk.start, chunk.start + chunk.count);
         pages.push(
@@ -409,6 +411,7 @@ function buildFocusedPages(r: ReportView): React.ReactNode[] {
 
 /** All pages of the document, in order, as separate nodes. */
 export function buildDocumentPages(r: ReportView): React.ReactNode[] {
+  if (r.templateId === "improvement") return buildImprovementPages(r);
   return getTemplate(r.templateId).family === "focused"
     ? buildFocusedPages(r)
     : buildStandardPages(r);

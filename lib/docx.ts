@@ -21,7 +21,7 @@ import path from "node:path";
 import type { Phase } from "./types";
 import { PHASES, PHASE_LABEL, PHASE_TITLE } from "./types";
 import type { PhotoMeta, ReportData } from "./types";
-import { photoPageChunks } from "./layout";
+import { photoPageChunksSized } from "./layout";
 import { readUpload } from "./store";
 
 /*
@@ -329,14 +329,48 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
   const paired =
     report.paired && photos.before.length > 0 && photos.before.length === photos.after.length;
 
-  // Photos organised like the PDF: 2×2 grids first, then big feature shots.
+  // Photos organised like the PDF: grids and big shots, honouring each
+  // photo's explicit print size when set.
   const emitSection = (list: LoadedPhoto[], phase: Phase) => {
-    for (const chunk of photoPageChunks(list.length)) {
+    for (const chunk of photoPageChunksSized(list.map((p) => p.size))) {
       const group = list.slice(chunk.start, chunk.start + chunk.count);
       if (chunk.kind === "grid") body.push(gridTable(group, phase));
       else for (const p of group) body.push(...photoBlock(p, phase));
     }
   };
+
+  const isImprovement = report.templateId === "improvement";
+  const NAVY = "073763";
+  const textSection = (title: string, text?: string) => {
+    if (!text?.trim()) return;
+    body.push(
+      new Paragraph({
+        spacing: { before: 280, after: 140 },
+        children: [
+          new TextRun({
+            text: title,
+            font: isImprovement ? "PT Sans" : DISPLAY,
+            size: 32,
+            bold: true,
+            color: isImprovement ? NAVY : TOKENS.text,
+          }),
+        ],
+      }),
+      new Paragraph({
+        spacing: { after: 240, line: 320 },
+        children: [
+          new TextRun({
+            text: text.trim(),
+            font: isImprovement ? "PT Sans" : BODY,
+            size: 22,
+            color: TOKENS.text,
+          }),
+        ],
+      }),
+    );
+  };
+
+  textSection("Current Situation", report.currentSituation);
 
   if (paired) {
     sectionHeading("01", "Before & after", photos.before.length * 2, firstBlock);
@@ -357,6 +391,9 @@ export async function renderDocx(report: ReportData): Promise<Buffer> {
       emitSection(photos[phase], phase);
     }
   }
+
+  textSection("Rectifications Completed", report.rectifications);
+  textSection("Recommendations", report.recommendations);
 
   // Back page — logo, optional remarks (only when provided), meta line.
   body.push(

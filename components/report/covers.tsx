@@ -1,6 +1,7 @@
 import type { ReportView } from "@/lib/sample";
 import { Logo, fmtDate } from "./primitives";
 import { FocusedCover } from "./focused";
+import { ImprovementCover } from "./improvement";
 
 /* ---------------------------------------------------------------------------
    Five cover treatments. All share the same type system, the 16mm grid and a
@@ -806,6 +807,8 @@ export function CoverFilmstrip({ r }: { r: ReportView }) {
 
 export function Cover({ r }: { r: ReportView }) {
   switch (r.templateId) {
+    case "improvement":
+      return <ImprovementCover r={r} />;
     case "focused-photo":
     case "focused-card":
     case "focused-scrim":

@@ -1,0 +1,21 @@
+# Render.com blueprint — deploys the portal with a persistent disk so
+# reports, photos, buildings, brands and accounts survive every deploy.
+# In Render: New → Blueprint → connect this repo → Apply.
+services:
+  - type: web
+    name: cleaning-works-reports
+    runtime: docker
+    plan: starter
+    region: singapore # closest region to Australia
+    branch: claude/cleaning-report-generator-kirlnd
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    disk:
+      name: cwr-data
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: CWR_DATA_DIR
+        value: /data
+      - key: NODE_ENV
+        value: production
